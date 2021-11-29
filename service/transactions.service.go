@@ -68,6 +68,7 @@ func (service *transactionService) syncNewTransactions() {
 	// when slice was less then 1000 once replace to the other method that gets unidexed onse as well
 	iteration := 0
 	for {
+		dtStart := time.Now()
 		fmt.Println("[syncNewTransactions][iteration start] " + strconv.Itoa(iteration))
 		tx := service.db.Begin()
 		defer func() {
@@ -172,6 +173,15 @@ func (service *transactionService) syncNewTransactions() {
 		}
 		tx.Commit()
 		fmt.Println("[syncNewTransactions][iteration end] " + strconv.Itoa(iteration))
+		dtEnd := time.Now()
+		diff := dtEnd.Sub(dtStart)
+		diffInSeconds := diff.Seconds()
+		if diffInSeconds < 10 && diffInSeconds > 0 && includeUnindexed {
+			timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+			fmt.Println("[syncNewTransactions][sleeping for] ", timeDurationToSleep)
+			time.Sleep(timeDurationToSleep * time.Second)
+
+		}
 	}
 
 }
@@ -179,6 +189,7 @@ func (service *transactionService) syncNewTransactions() {
 func (service *transactionService) monitorTransactions() {
 	iteration := 0
 	for {
+		dtStart := time.Now()
 		fmt.Println("[monitorTransactions][iteration start] " + strconv.Itoa(iteration))
 		// get all transaction that have index or with status attoched to dag from db
 		var dbTransactions []entities.BaseTransaction
@@ -218,8 +229,16 @@ func (service *transactionService) monitorTransactions() {
 			log.Println(result)
 		}
 
-		time.Sleep(5 * time.Second)
 		fmt.Println("[monitorTransactions][iteration end] " + strconv.Itoa(iteration))
+		dtEnd := time.Now()
+		diff := dtEnd.Sub(dtStart)
+		diffInSeconds := diff.Seconds()
+		if diffInSeconds < 5 && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(float64(5) - diffInSeconds)
+			fmt.Println("[syncNewTransactions][sleeping for] ", timeDurationToSleep)
+			time.Sleep(timeDurationToSleep * time.Second)
+
+		}
 	}
 }
 

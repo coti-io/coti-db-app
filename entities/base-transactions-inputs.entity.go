@@ -9,6 +9,7 @@ type BaseTransactionsInputs struct {
 	ID              int32     `gorm:"column:id"`
 	TransactionId   int32     `gorm:"column:transactionId"`
 	Hash            string    `gorm:"column:hash"`
+	Name            string    `gorm:"column:name"`
 	AddressHash     string    `gorm:"column:addressHash"`
 	Amount          float64   `gorm:"column:amount"`
 	InputCreateTime float64   `gorm:"column:inputCreateTime"`
@@ -20,6 +21,7 @@ func NewBaseTransactionsInputs(tx *dto.BaseTransactionsRes, transactionId int32)
 	instance := new(BaseTransactionsInputs)
 	instance.TransactionId = transactionId
 	instance.Hash = tx.Hash
+	instance.Name = tx.Name
 	instance.AddressHash = tx.AddressHash
 	instance.Amount = tx.Amount
 	instance.InputCreateTime = tx.CreateTime //time.Unix(int64(tx.CreateTime), 0)

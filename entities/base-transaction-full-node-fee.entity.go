@@ -10,6 +10,7 @@ type BaseTransactionFNF struct {
 	TransactionId         int32     `gorm:"column:transactionId"`
 	Hash                  string    `gorm:"column:hash"`
 	AddressHash           string    `gorm:"column:addressHash"`
+	Name                  string    `gorm:"column:name"`
 	Amount                float64   `gorm:"column:amount"`
 	FullnodeFeeCreateTime float64   `gorm:"column:fullnodeFeeCreateTime"`
 	OriginalAmount        float64   `gorm:"column:originalAmount"`
@@ -21,6 +22,7 @@ func NewBaseTransactionFNF(tx *dto.BaseTransactionsRes, transactionId int32) *Ba
 	instance := new(BaseTransactionFNF)
 	instance.TransactionId = transactionId
 	instance.Hash = tx.Hash
+	instance.Name = tx.Name
 	instance.AddressHash = tx.AddressHash
 	instance.Amount = tx.Amount
 	instance.FullnodeFeeCreateTime = tx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
