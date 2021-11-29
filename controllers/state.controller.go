@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"db-sync/dto"
-	"db-sync/entities"
-	service "db-sync/services"
+	"coti-db-app/dto"
+	"coti-db-app/entities"
+	service "coti-db-app/services"
 
-	dbprovider "db-sync/db-provider"
+	dbprovider "coti-db-app/db-provider"
 
 	"github.com/gin-gonic/gin"
 )

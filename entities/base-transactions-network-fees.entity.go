@@ -1,7 +1,7 @@
 package entities
 
 import (
-	"db-sync/dto"
+	"coti-db-app/dto"
 	"time"
 )
 

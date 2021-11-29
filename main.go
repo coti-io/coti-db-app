@@ -1,10 +1,10 @@
 package main
 
 import (
-	"db-sync/controllers"
-	dbprovider "db-sync/db-provider"
-	"db-sync/entities"
-	service "db-sync/services"
+	"coti-db-app/controllers"
+	dbprovider "coti-db-app/db-provider"
+	"coti-db-app/entities"
+	service "coti-db-app/services"
 	"log"
 
 	"github.com/gin-gonic/gin"

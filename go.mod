@@ -1,4 +1,4 @@
-module db-sync
+module coti-db-app 
 
 go 1.17
 

@@ -2,10 +2,10 @@ package service
 
 import (
 	"bytes"
-	dbprovider "db-sync/db-provider"
+	dbprovider "coti-db-app/db-provider"
 
-	"db-sync/dto"
-	"db-sync/entities"
+	"coti-db-app/dto"
+	"coti-db-app/entities"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
