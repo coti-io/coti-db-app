@@ -1,9 +1,10 @@
 package main
 
 import (
+	"db-sync/controllers"
 	dbprovider "db-sync/db-provider"
 	"db-sync/entities"
-	"db-sync/service"
+	service "db-sync/services"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -16,20 +17,21 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	server := gin.Default()
-	server.GET("/test", func(ctx *gin.Context) {
-		ctx.JSON(200, gin.H{
-			"message": "OK!!",
-		})
-	})
 
+	// Init the db connection
 	dbprovider.Init()
 
 	// making sure all the app states exists and create them if not
 	verifyAppStates()
 
+	// run the sync tasks
 	transactionService := service.NewTransactionService()
 	transactionService.RunSync()
 
+	// register routes
+	server.GET("/get-sync-state", controllers.GetSyncState)
+
+	// runs the server
 	server.Run(":3000")
 
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	dbprovider "db-sync/db-provider"
+
 	"db-sync/dto"
 	"db-sync/entities"
 	"encoding/json"
@@ -12,11 +13,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var once sync.Once
 
 type BaseTransactionName string
 
@@ -29,9 +33,12 @@ const (
 
 type TransactionService interface {
 	RunSync()
+	GetTip() dto.TransactionsIndexTip
+	GetLastIterationTip() int64
 }
 type transactionService struct {
-	isSyncRunning bool
+	isSyncRunning         bool
+	lastIterationIndexTip int64
 }
 
 type txBuilder struct {
@@ -39,8 +46,15 @@ type txBuilder struct {
 	DbTx *entities.BaseTransaction
 }
 
+var instance *transactionService
+
+// we made this one a singltone because it have a state
 func NewTransactionService() TransactionService {
-	return &transactionService{false}
+	once.Do(func() {
+
+		instance = &transactionService{false, 0}
+	})
+	return instance
 }
 
 // TODO: handle all errors by chanels
@@ -93,8 +107,9 @@ func (service *transactionService) syncNewTransactions() {
 			lastMonitoredIndex = int64(lastMonitoredIndexInt)
 		}
 		// get the tip
-		tipDto := service.getTip()
+		tipDto := service.GetTip()
 		tipIndex := tipDto.LastIndex
+		service.lastIterationIndexTip = tipIndex
 		startingIndex := lastMonitoredIndex
 		if startingIndex != 0 {
 			startingIndex += 1
@@ -308,7 +323,7 @@ func (service *transactionService) getTransactionsByHash(hashArray []string) []d
 	return data
 }
 
-func (service *transactionService) getTip() dto.TransactionsIndexTip {
+func (service *transactionService) GetTip() dto.TransactionsIndexTip {
 
 	res, err := http.Get("https://testnet-staging-fullnode1.coti.io/transaction/lastIndex")
 
@@ -324,6 +339,10 @@ func (service *transactionService) getTip() dto.TransactionsIndexTip {
 	var data dto.TransactionsIndexTip
 	json.Unmarshal([]byte(body), &data)
 	return data
+}
+
+func (service *transactionService) GetLastIterationTip() int64 {
+	return service.lastIterationIndexTip
 }
 
 func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[string]txBuilder, tx *gorm.DB) error {
