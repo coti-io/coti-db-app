@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	dbprovider "db-sync/db-provider"
 	"db-sync/dto"
 	"db-sync/entities"
 	"encoding/json"
@@ -30,7 +31,6 @@ type TransactionService interface {
 	RunSync()
 }
 type transactionService struct {
-	db            *gorm.DB
 	isSyncRunning bool
 }
 
@@ -39,8 +39,8 @@ type txBuilder struct {
 	DbTx *entities.BaseTransaction
 }
 
-func NewTransactionService(db *gorm.DB) TransactionService {
-	return &transactionService{db, false}
+func NewTransactionService() TransactionService {
+	return &transactionService{false}
 }
 
 // TODO: handle all errors by chanels
@@ -70,7 +70,7 @@ func (service *transactionService) syncNewTransactions() {
 	for {
 		dtStart := time.Now()
 		fmt.Println("[syncNewTransactions][iteration start] " + strconv.Itoa(iteration))
-		tx := service.db.Begin()
+		tx := dbprovider.DB.Begin()
 		defer func() {
 			if r := recover(); r != nil {
 				tx.Rollback()
@@ -193,7 +193,7 @@ func (service *transactionService) monitorTransactions() {
 		fmt.Println("[monitorTransactions][iteration start] " + strconv.Itoa(iteration))
 		// get all transaction that have index or with status attoched to dag from db
 		var dbTransactions []entities.BaseTransaction
-		service.db.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions)
+		dbprovider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions)
 		m := map[string]entities.BaseTransaction{}
 		hashArray := []string{}
 		for _, tx := range dbTransactions {
@@ -224,7 +224,7 @@ func (service *transactionService) monitorTransactions() {
 			}
 		}
 		if len(transactionToSave) > 0 {
-			result := service.db.Save(&transactionToSave)
+			result := dbprovider.DB.Save(&transactionToSave)
 
 			log.Println(result)
 		}
