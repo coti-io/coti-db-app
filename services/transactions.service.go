@@ -65,7 +65,7 @@ func (service *transactionService) RunSync() {
 	// 2) update unverified  transactions
 	// 	  get all transactions with status that is not confirmed and check if they are and update
 
-	// flag if this one is already running and dont activate if true
+	// flag if this one is already running and don't activate if true
 	if service.isSyncRunning {
 		return
 	}
@@ -77,9 +77,9 @@ func (service *transactionService) RunSync() {
 }
 
 func (service *transactionService) syncNewTransactions() {
-	var maxTransactionsInSync int64 = 3000 // inthe future replace by 1000 and export to config
+	var maxTransactionsInSync int64 = 3000 // in the future replace by 1000 and export to config
 	var includeUnindexed = false
-	// when slice was less then 1000 once replace to the other method that gets unidexed onse as well
+	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
 	iteration := 0
 	for {
 		dtStart := time.Now()
@@ -93,7 +93,7 @@ func (service *transactionService) syncNewTransactions() {
 		if err := tx.Error; err != nil {
 			return
 		}
-		// get last monitored index - we need to consider updated transaction status.. is transaction that are not approved assigned an index?
+		// get last monitored index - we need to consider updated transaction status. Is transaction that are not approved assigned an index?
 		var appState entities.AppState
 		tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
 		var lastMonitoredIndex int64
@@ -125,7 +125,7 @@ func (service *transactionService) syncNewTransactions() {
 		transactions := service.getTransactions(int64(startingIndex), int64(endingIndex), includeUnindexed)
 		if len(transactions) > 0 {
 			// get all the transactions hash
-			txHashArray := []interface{}{}
+			var txHashArray []interface{}
 			for _, tx := range transactions {
 				txHashArray = append(txHashArray, tx.Hash)
 			}
@@ -133,7 +133,7 @@ func (service *transactionService) syncNewTransactions() {
 			var dbTransactionsRes []entities.BaseTransaction
 			tx.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
 
-			filteredTransactions := []dto.TransactionResponse{}
+			var filteredTransactions []dto.TransactionResponse
 
 			largestIndex := 0
 			for _, tx := range transactions {
@@ -152,7 +152,7 @@ func (service *transactionService) syncNewTransactions() {
 			}
 			if len(filteredTransactions) > 0 {
 				// prepare all the transaction to be saved
-				baseTransactionsToBeSaved := []*entities.BaseTransaction{}
+				var baseTransactionsToBeSaved []*entities.BaseTransaction
 				m := map[string]txBuilder{}
 				for _, tx := range filteredTransactions {
 					dbtx := entities.NewBaseTransaction(&tx)
@@ -170,7 +170,7 @@ func (service *transactionService) syncNewTransactions() {
 				if largestIndex < int(lastMonitoredIndex) {
 					largestIndex = int(lastMonitoredIndex)
 				}
-				appState.Value = strconv.Itoa(int(largestIndex))
+				appState.Value = strconv.Itoa(largestIndex)
 
 				if err := tx.Save(&appState).Error; err != nil {
 					tx.Rollback()
@@ -206,7 +206,7 @@ func (service *transactionService) monitorTransactions() {
 	for {
 		dtStart := time.Now()
 		fmt.Println("[monitorTransactions][iteration start] " + strconv.Itoa(iteration))
-		// get all transaction that have index or with status attoched to dag from db
+		// get all transaction that have index or with status attached to dag from db
 		var dbTransactions []entities.BaseTransaction
 		dbprovider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions)
 		m := map[string]entities.BaseTransaction{}
@@ -258,15 +258,15 @@ func (service *transactionService) monitorTransactions() {
 }
 
 func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeUnindexed bool) []dto.TransactionResponse {
-	values := map[string]string{"startingIndex": strconv.FormatInt(int64(startingIndex), 10), "endingIndex": strconv.FormatInt(int64(endingIndex), 10)}
-	json_data, err := json.Marshal(values)
+	values := map[string]string{"startingIndex": strconv.FormatInt(int64(startingIndex), 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
+	jsonData, err := json.Marshal(values)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	res, err := http.Post("https://testnet-staging-fullnode1.coti.io/transaction_batch", "application/json",
-		bytes.NewBuffer(json_data))
+		bytes.NewBuffer(jsonData))
 
 	if err != nil {
 		log.Fatal(err)
@@ -278,7 +278,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 	}
 
 	var data []dto.TransactionResponse
-	json.Unmarshal([]byte(body), &data)
+	json.Unmarshal(body, &data)
 	if includeUnindexed {
 		res, err := http.Get("https://testnet-staging-fullnode1.coti.io/transaction/none-indexed/batch")
 
@@ -292,7 +292,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 		}
 
 		var unindexedData []dto.TransactionResponse
-		json.Unmarshal([]byte(body), &unindexedData)
+		json.Unmarshal(body, &unindexedData)
 		data = append(data, unindexedData...)
 	}
 	return data
@@ -300,14 +300,14 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 
 func (service *transactionService) getTransactionsByHash(hashArray []string) []dto.TransactionResponse {
 	values := map[string][]string{"transactionHashes": hashArray}
-	json_data, err := json.Marshal(values)
+	jsonData, err := json.Marshal(values)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	res, err := http.Post("https://testnet-staging-fullnode1.coti.io/transaction/multiple", "application/json",
-		bytes.NewBuffer(json_data))
+		bytes.NewBuffer(jsonData))
 
 	if err != nil {
 		log.Fatal(err)
@@ -319,7 +319,7 @@ func (service *transactionService) getTransactionsByHash(hashArray []string) []d
 	}
 
 	var data []dto.TransactionResponse
-	json.Unmarshal([]byte(body), &data)
+	json.Unmarshal(body, &data)
 	return data
 }
 
@@ -346,10 +346,10 @@ func (service *transactionService) GetLastIterationTip() int64 {
 }
 
 func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[string]txBuilder, tx *gorm.DB) error {
-	ibtToBeSaved := []*entities.BaseTransactionsInputs{}
-	rbtToBeSaved := []*entities.BaseTransactionsReceivers{}
-	ffbtToBeSaved := []*entities.BaseTransactionFNF{}
-	nfbtToBeSaved := []*entities.BaseTransactionsNF{}
+	var ibtToBeSaved []*entities.BaseTransactionsInputs
+	var rbtToBeSaved []*entities.BaseTransactionsReceivers
+	var ffbtToBeSaved []*entities.BaseTransactionFNF
+	var nfbtToBeSaved []*entities.BaseTransactionsNF
 	for _, value := range m {
 		txId := value.DbTx.ID
 		for _, baseTransaction := range value.Tx.BaseTransactionsRes {
