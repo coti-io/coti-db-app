@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"coti-db-app/dto"
-	"coti-db-app/entities"
-	service "coti-db-app/services"
+	"github.com/coti-io/coti-db-app/dto"
+	"github.com/coti-io/coti-db-app/entities"
+	service "github.com/coti-io/coti-db-app/services"
 
-	dbprovider "coti-db-app/db-provider"
+	dbprovider "github.com/coti-io/coti-db-app/db-provider"
 
 	"github.com/gin-gonic/gin"
 )

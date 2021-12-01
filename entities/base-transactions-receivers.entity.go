@@ -1,9 +1,10 @@
 package entities
 
 import (
-	"coti-db-app/dto"
 	"database/sql"
 	"time"
+
+	"github.com/coti-io/coti-db-app/dto"
 )
 
 type BaseTransactionsReceivers struct {

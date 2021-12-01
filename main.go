@@ -1,11 +1,12 @@
 package main
 
 import (
-	"coti-db-app/controllers"
-	dbprovider "coti-db-app/db-provider"
-	"coti-db-app/entities"
-	service "coti-db-app/services"
 	"log"
+
+	"github.com/coti-io/coti-db-app/controllers"
+	dbprovider "github.com/coti-io/coti-db-app/db-provider"
+	"github.com/coti-io/coti-db-app/entities"
+	service "github.com/coti-io/coti-db-app/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

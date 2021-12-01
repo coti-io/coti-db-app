@@ -1,8 +1,9 @@
 package entities
 
 import (
-	"coti-db-app/dto"
 	"time"
+
+	"github.com/coti-io/coti-db-app/dto"
 )
 
 type BaseTransactionFNF struct {

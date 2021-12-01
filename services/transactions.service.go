@@ -2,10 +2,9 @@ package service
 
 import (
 	"bytes"
-	dbprovider "coti-db-app/db-provider"
 
-	"coti-db-app/dto"
-	"coti-db-app/entities"
+	dbprovider "github.com/coti-io/coti-db-app/db-provider"
+
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +14,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coti-io/coti-db-app/dto"
+	"github.com/coti-io/coti-db-app/entities"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -48,7 +50,7 @@ type txBuilder struct {
 
 var instance *transactionService
 
-// we made this one a singltone because it have a state
+// we made this one a singleton because it have a state
 func NewTransactionService() TransactionService {
 	once.Do(func() {
 
@@ -114,22 +116,22 @@ func (service *transactionService) syncNewTransactions() {
 		if startingIndex != 0 {
 			startingIndex += 1
 		}
-		// making sure we dont handle too much in one iteration
+		// making sure we don't handle too much in one iteration
 		endingIndex := lastMonitoredIndex
-		if tipIndex > int64(startingIndex)+int64(maxTransactionsInSync) {
+		if tipIndex > startingIndex+maxTransactionsInSync {
 			endingIndex += maxTransactionsInSync
 		} else {
 			endingIndex = int64(tipIndex) + 1
 			includeUnindexed = true
 		}
-		transactions := service.getTransactions(int64(startingIndex), int64(endingIndex), includeUnindexed)
+		transactions := service.getTransactions(startingIndex, endingIndex, includeUnindexed)
 		if len(transactions) > 0 {
 			// get all the transactions hash
 			var txHashArray []interface{}
 			for _, tx := range transactions {
 				txHashArray = append(txHashArray, tx.Hash)
 			}
-			// find recoreds with a tx hash like the one we got and filter them from the array
+			// find records with a tx hash like the one we got and filter them from the array
 			var dbTransactionsRes []entities.BaseTransaction
 			tx.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
 
@@ -151,7 +153,7 @@ func (service *transactionService) syncNewTransactions() {
 				}
 			}
 			if len(filteredTransactions) > 0 {
-				// prepare all the transaction to be saved
+				// prepare all the transactions to be saved
 				var baseTransactionsToBeSaved []*entities.BaseTransaction
 				m := map[string]txBuilder{}
 				for _, tx := range filteredTransactions {
@@ -210,7 +212,7 @@ func (service *transactionService) monitorTransactions() {
 		var dbTransactions []entities.BaseTransaction
 		dbprovider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions)
 		m := map[string]entities.BaseTransaction{}
-		hashArray := []string{}
+		var hashArray []string
 		for _, tx := range dbTransactions {
 			m[tx.Hash] = tx
 			hashArray = append(hashArray, tx.Hash)
@@ -258,7 +260,7 @@ func (service *transactionService) monitorTransactions() {
 }
 
 func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeUnindexed bool) []dto.TransactionResponse {
-	values := map[string]string{"startingIndex": strconv.FormatInt(int64(startingIndex), 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
+	values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
 	jsonData, err := json.Marshal(values)
 
 	if err != nil {
@@ -337,7 +339,7 @@ func (service *transactionService) GetTip() dto.TransactionsIndexTip {
 	}
 
 	var data dto.TransactionsIndexTip
-	json.Unmarshal([]byte(body), &data)
+	json.Unmarshal(body, &data)
 	return data
 }
 

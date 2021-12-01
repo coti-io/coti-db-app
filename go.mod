@@ -1,4 +1,4 @@
-module coti-db-app 
+module github.com/coti-io/coti-db-app
 
 go 1.17
 
