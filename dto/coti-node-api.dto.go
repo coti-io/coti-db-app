@@ -1,6 +1,8 @@
 package dto
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type TransactionResponse struct {
 	Hash                           string                `json:"hash"`
@@ -8,7 +10,7 @@ type TransactionResponse struct {
 	Amount                         float64               `json:"amount"`
 	AttachmentTime                 float64               `json:"attachmentTime"`
 	IsValid                        sql.NullBool          `json:"isValid"`
-	TransactionCreateTime          float64               `json:"transactionCreateTime"`
+	CreateTime                     float64               `json:"createTime"`
 	LeftParentHash                 string                `json:"leftParentHash"`
 	RightParentHash                string                `json:"rightParentHash"`
 	SenderHash                     string                `json:"senderHash"`

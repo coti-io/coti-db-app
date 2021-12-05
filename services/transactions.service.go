@@ -2,11 +2,9 @@ package service
 
 import (
 	"bytes"
-
-	dbprovider "github.com/coti-io/coti-db-app/db-provider"
-
 	"encoding/json"
 	"fmt"
+	dbprovider "github.com/coti-io/coti-db-app/db-provider"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -45,7 +43,7 @@ type transactionService struct {
 
 type txBuilder struct {
 	Tx   dto.TransactionResponse
-	DbTx *entities.BaseTransaction
+	DbTx *entities.Transaction
 }
 
 var instance *transactionService
@@ -86,109 +84,7 @@ func (service *transactionService) syncNewTransactions() {
 	for {
 		dtStart := time.Now()
 		fmt.Println("[syncNewTransactions][iteration start] " + strconv.Itoa(iteration))
-		tx := dbprovider.DB.Begin()
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		if err := tx.Error; err != nil {
-			return
-		}
-		// get last monitored index - we need to consider updated transaction status. Is transaction that are not approved assigned an index?
-		var appState entities.AppState
-		tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
-		var lastMonitoredIndex int64
-		if appState.Value == "" {
-			lastMonitoredIndex = 0
-		} else {
-			lastMonitoredIndexInt, err := strconv.Atoi(appState.Value)
-			if err != nil {
-				panic(err)
-			}
-			lastMonitoredIndex = int64(lastMonitoredIndexInt)
-		}
-		// get the tip
-		tipDto := service.GetTip()
-		tipIndex := tipDto.LastIndex
-		service.lastIterationIndexTip = tipIndex
-		startingIndex := lastMonitoredIndex
-		if startingIndex != 0 {
-			startingIndex += 1
-		}
-		// making sure we don't handle too much in one iteration
-		endingIndex := lastMonitoredIndex
-		if tipIndex > startingIndex+maxTransactionsInSync {
-			endingIndex += maxTransactionsInSync
-		} else {
-			endingIndex = int64(tipIndex) + 1
-			includeUnindexed = true
-		}
-		transactions := service.getTransactions(startingIndex, endingIndex, includeUnindexed)
-		if len(transactions) > 0 {
-			// get all the transactions hash
-			var txHashArray []interface{}
-			for _, tx := range transactions {
-				txHashArray = append(txHashArray, tx.Hash)
-			}
-			// find records with a tx hash like the one we got and filter them from the array
-			var dbTransactionsRes []entities.BaseTransaction
-			tx.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
-
-			var filteredTransactions []dto.TransactionResponse
-
-			largestIndex := 0
-			for _, tx := range transactions {
-				exists := false
-				for _, dbTx := range dbTransactionsRes {
-					if dbTx.Hash == tx.Hash {
-						exists = true
-					}
-				}
-				if largestIndex < int(tx.Index) {
-					largestIndex = int(tx.Index)
-				}
-				if !exists {
-					filteredTransactions = append(filteredTransactions, tx)
-				}
-			}
-			if len(filteredTransactions) > 0 {
-				// prepare all the transactions to be saved
-				var baseTransactionsToBeSaved []*entities.BaseTransaction
-				m := map[string]txBuilder{}
-				for _, tx := range filteredTransactions {
-					dbtx := entities.NewBaseTransaction(&tx)
-					baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbtx)
-					m[dbtx.Hash] = txBuilder{tx, dbtx}
-				}
-
-				// save all of them
-				if err := tx.Create(&baseTransactionsToBeSaved).Error; err != nil {
-					tx.Rollback()
-					log.Println(err)
-					return
-				}
-
-				if largestIndex < int(lastMonitoredIndex) {
-					largestIndex = int(lastMonitoredIndex)
-				}
-				appState.Value = strconv.Itoa(largestIndex)
-
-				if err := tx.Save(&appState).Error; err != nil {
-					tx.Rollback()
-					log.Println(err)
-					return
-				}
-				if err := service.insertBaseTransactionsInputsOutputs(m, tx); err != nil {
-					tx.Rollback()
-					log.Println(err)
-					return
-				}
-
-			}
-
-		}
-		tx.Commit()
+		service.syncTransactionsIteration(maxTransactionsInSync, &includeUnindexed)
 		fmt.Println("[syncNewTransactions][iteration end] " + strconv.Itoa(iteration))
 		dtEnd := time.Now()
 		diff := dtEnd.Sub(dtStart)
@@ -199,8 +95,115 @@ func (service *transactionService) syncNewTransactions() {
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
+		iteration +=1
 	}
 
+}
+
+func (service *transactionService) syncTransactionsIteration (maxTransactionsInSync int64, includeUnindexed *bool) {
+	tx := dbprovider.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Error; err != nil {
+		return
+	}
+	// get last monitored index - we need to consider updated transaction status. Is transaction that are not approved assigned an index?
+	var appState entities.AppState
+	tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
+	var lastMonitoredIndex int64
+	if appState.Value == "" {
+		lastMonitoredIndex = 0
+	} else {
+		lastMonitoredIndexInt, err := strconv.Atoi(appState.Value)
+		if err != nil {
+			panic(err)
+		}
+		lastMonitoredIndex = int64(lastMonitoredIndexInt)
+	}
+	// get the tip
+	tipDto := service.GetTip()
+	tipIndex := tipDto.LastIndex
+	service.lastIterationIndexTip = tipIndex
+	startingIndex := lastMonitoredIndex
+	if startingIndex != 0 {
+		startingIndex += 1
+	}
+	// making sure we don't handle too much in one iteration
+	endingIndex := lastMonitoredIndex
+	if tipIndex > startingIndex+maxTransactionsInSync {
+		endingIndex += maxTransactionsInSync
+	} else {
+		endingIndex = int64(tipIndex) + 1
+		*includeUnindexed = true
+	}
+	transactions := service.getTransactions(startingIndex, endingIndex, *includeUnindexed)
+	if len(transactions) > 0 {
+		// get all the transactions hash
+		var txHashArray []interface{}
+		for _, tx := range transactions {
+			txHashArray = append(txHashArray, tx.Hash)
+		}
+		// find records with a tx hash like the one we got and filter them from the array
+		var dbTransactionsRes []entities.Transaction
+		tx.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
+
+		var filteredTransactions []dto.TransactionResponse
+
+		largestIndex := 0
+		for _, tx := range transactions {
+			exists := false
+			for _, dbTx := range dbTransactionsRes {
+				if dbTx.Hash == tx.Hash {
+					exists = true
+				}
+			}
+			if largestIndex < int(tx.Index) {
+				largestIndex = int(tx.Index)
+			}
+			if !exists {
+				filteredTransactions = append(filteredTransactions, tx)
+			}
+		}
+		if len(filteredTransactions) > 0 {
+			// prepare all the transactions to be saved
+			var baseTransactionsToBeSaved []*entities.Transaction
+			m := map[string]txBuilder{}
+			for _, tx := range filteredTransactions {
+				dbtx := entities.NewTransaction(&tx)
+				baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbtx)
+				m[dbtx.Hash] = txBuilder{tx, dbtx}
+			}
+
+			// save all of them
+			if err := tx.Omit("CreateTime", "UpdateTime").Create(&baseTransactionsToBeSaved).Error; err != nil {
+				tx.Rollback()
+				log.Println(err)
+				return
+			}
+
+			if largestIndex < int(lastMonitoredIndex) {
+				largestIndex = int(lastMonitoredIndex)
+			}
+			appState.Value = strconv.Itoa(largestIndex)
+
+			if err := tx.Omit("CreateTime", "UpdateTime").Save(&appState).Error; err != nil {
+				tx.Rollback()
+				log.Println(err)
+				return
+			}
+			if err := service.insertBaseTransactionsInputsOutputs(m, tx); err != nil {
+				tx.Rollback()
+				log.Println(err)
+				return
+			}
+
+		}
+
+	}
+	tx.Commit()
 }
 
 func (service *transactionService) monitorTransactions() {
@@ -209,9 +212,9 @@ func (service *transactionService) monitorTransactions() {
 		dtStart := time.Now()
 		fmt.Println("[monitorTransactions][iteration start] " + strconv.Itoa(iteration))
 		// get all transaction that have index or with status attached to dag from db
-		var dbTransactions []entities.BaseTransaction
+		var dbTransactions []entities.Transaction
 		dbprovider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions)
-		m := map[string]entities.BaseTransaction{}
+		m := map[string]entities.Transaction{}
 		var hashArray []string
 		for _, tx := range dbTransactions {
 			m[tx.Hash] = tx
@@ -220,7 +223,7 @@ func (service *transactionService) monitorTransactions() {
 		// get the transactions from the node
 		transactions := service.getTransactionsByHash(hashArray)
 		// update the transactions
-		var transactionToSave []*entities.BaseTransaction
+		var transactionToSave []*entities.Transaction
 		for _, tx := range transactions {
 			isChanged := false
 			txToSave := m[tx.Hash]
@@ -241,7 +244,7 @@ func (service *transactionService) monitorTransactions() {
 			}
 		}
 		if len(transactionToSave) > 0 {
-			result := dbprovider.DB.Save(&transactionToSave)
+			result := dbprovider.DB.Omit("CreateTime", "UpdateTime").Save(&transactionToSave)
 
 			log.Println(result)
 		}
@@ -256,6 +259,7 @@ func (service *transactionService) monitorTransactions() {
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
+		iteration +=1
 	}
 }
 
@@ -348,60 +352,56 @@ func (service *transactionService) GetLastIterationTip() int64 {
 }
 
 func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[string]txBuilder, tx *gorm.DB) error {
-	var ibtToBeSaved []*entities.BaseTransactionsInputs
-	var rbtToBeSaved []*entities.BaseTransactionsReceivers
-	var ffbtToBeSaved []*entities.BaseTransactionFNF
-	var nfbtToBeSaved []*entities.BaseTransactionsNF
+	var ibtToBeSaved []*entities.InputBaseTransaction
+	var rbtToBeSaved []*entities.ReceiverBaseTransaction
+	var ffbtToBeSaved []*entities.FullnodeFeeBaseTransaction
+	var nfbtToBeSaved []*entities.NetworkFeeBaseTransaction
 	for _, value := range m {
 		txId := value.DbTx.ID
 		for _, baseTransaction := range value.Tx.BaseTransactionsRes {
 			switch baseTransaction.Name {
 			case "IBT":
-				// create IBT record
-				ibt := entities.NewBaseTransactionsInputs(&baseTransaction, txId)
+				ibt := entities.NewInputBaseTransaction(&baseTransaction, txId)
 				ibtToBeSaved = append(ibtToBeSaved, ibt)
-				// service.db.Create(&ibt)
 			case "RBT":
-				// create RBT record
-				rbt := entities.NewBaseTransactionsReceivers(&baseTransaction, txId)
+				rbt := entities.NewReceiverBaseTransaction(&baseTransaction, txId)
 				rbtToBeSaved = append(rbtToBeSaved, rbt)
-				// service.db.Create(&rbt)
 			case "FFBT":
-				// create FFBT record
-				ffbt := entities.NewBaseTransactionFNF(&baseTransaction, txId)
+				ffbt := entities.NewFullnodeFeeBaseTransaction(&baseTransaction, txId)
 				ffbtToBeSaved = append(ffbtToBeSaved, ffbt)
-				// service.db.Create(&ffbt)
 			case "NFBT":
-				// create NFBT record
-				nfbt := entities.NewBaseTransactionNF(&baseTransaction, txId)
+				nfbt := entities.NewNetworkFeeBaseTransaction(&baseTransaction, txId)
 				nfbtToBeSaved = append(nfbtToBeSaved, nfbt)
-				// service.db.Create(&nfbt)
 			default:
 				fmt.Println("Unknown base transaction name: ", baseTransaction.Name)
 			}
 		}
 
 	}
-	if err := tx.Create(&ibtToBeSaved).Error; err != nil {
-		tx.Rollback()
-		log.Println(err)
-		return err
+	if len(ibtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&ibtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
-	if err := tx.Create(&rbtToBeSaved).Error; err != nil {
-		tx.Rollback()
-		log.Println(err)
-		return err
+	if len(rbtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&rbtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
 	}
-	if err := tx.Create(&ffbtToBeSaved).Error; err != nil {
-		tx.Rollback()
-		log.Println(err)
-		return err
+	if len(ffbtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&ffbtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
 	}
-	if err := tx.Create(&nfbtToBeSaved).Error; err != nil {
-		tx.Rollback()
-		log.Println(err)
-		return err
+	if len(nfbtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&nfbtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 	return nil
 

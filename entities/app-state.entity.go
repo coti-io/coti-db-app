@@ -11,16 +11,9 @@ const (
 )
 
 type AppState struct {
-	ID         int32          `gorm:"column:id"`
-	Name       AppStatesNames `gorm:"column:name"`
-	Value      string         `gorm:"column:value"`
-	CreateTime time.Time      `gorm:"column:createTime;autoCreateTime"`
-	UpdateTime time.Time      `gorm:"column:updateTime;autoUpdateTime:milli"`
-}
-
-func NewAppState(tx *AppState) *AppState {
-	instance := new(AppState)
-	instance.Name = tx.Name
-	instance.Value = tx.Value
-	return instance
+	ID         int32          `json:"id" gorm:"column:id;type:int(11) NOT NULL AUTO_INCREMENT"`
+	Name       AppStatesNames `json:"name" gorm:"column:name;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL"`
+	Value      string         `json:"value" gorm:"column:value;type:varchar(1000) COLLATE utf8_unicode_ci DEFAULT ''"`
+	CreateTime time.Time      `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"`
+	UpdateTime time.Time      `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 }
