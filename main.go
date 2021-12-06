@@ -33,7 +33,11 @@ func main() {
 	server.GET("/get-sync-state", controllers.GetSyncState)
 
 	// runs the server
-	server.Run(":3000")
+	serverRunError := server.Run(":3000")
+	if serverRunError != nil {
+		log.Fatal("Server run error")
+		return
+	}
 
 }
 

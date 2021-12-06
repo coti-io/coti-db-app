@@ -19,7 +19,7 @@ func Init() {
 	dbPort := os.Getenv("DB_PORT")
 	dbHost := os.Getenv("DB_HOST")
 	if os.Getenv("MIGRATE_DB") == "true" {
-		migrateDb(dbName, dbUser, dbHost,dbPort,dbPassword)
+		migrateDb(dbName, dbUser, dbHost, dbPort, dbPassword)
 	}
 
 	dbConnectionString := dbUser + `:` + dbPassword + `@tcp(` + dbHost + `:` + dbPort + `)/` + dbName + `?charset=utf8&parseTime=True&loc=Local`
@@ -44,10 +44,10 @@ func Init() {
 	DB = db
 }
 
-func migrateDb (dbName string, dbUser string, dbHost string, dbPort string, dbPassword string) {
+func migrateDb(dbName string, dbUser string, dbHost string, dbPort string, dbPassword string) {
 	dbConnectionWithNoDbString := dbUser + `:` + dbPassword + `@tcp(` + dbHost + `:` + dbPort + `)/`
 	db, dbError := gorm.Open(mysql.New(mysql.Config{
-		DSN:                       dbConnectionWithNoDbString, // data source name
+		DSN: dbConnectionWithNoDbString, // data source name
 	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 		NowFunc: func() time.Time {
@@ -69,7 +69,6 @@ func migrateDb (dbName string, dbUser string, dbHost string, dbPort string, dbPa
 	if setDbRes.Error != nil {
 		panic(setDbRes.Error)
 	}
-
 
 	// Migrate the schema
 	db.AutoMigrate(&entities.AppState{}, &entities.Transaction{}, &entities.FullnodeFeeBaseTransaction{}, &entities.InputBaseTransaction{}, &entities.NetworkFeeBaseTransaction{}, &entities.ReceiverBaseTransaction{})

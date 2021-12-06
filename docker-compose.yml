@@ -1,0 +1,14 @@
+version: '3'
+services:
+  coti-db-app:
+    image: coti-db-app
+    volumes:
+      - ./.env:/app/.env
+    ports:
+      - "5000:3000"
+    restart: on-failure
+    networks:
+      - coti-db-app
+networks:
+  coti-db-app:
+    driver: bridge

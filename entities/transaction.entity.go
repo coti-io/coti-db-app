@@ -8,7 +8,7 @@ import (
 
 type Transaction struct {
 	ID                             int32        `json:"id" gorm:"column:id;type:int(11) NOT NULL AUTO_INCREMENT"`
-	Hash                           string       `json:"hash" gorm:"column:hash;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL"`
+	Hash                           string       `json:"hash" gorm:"column:hash;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:hash_INDEX"`
 	Index                          int32        `json:"index" gorm:"column:index;type:int(11) DEFAULT NULL"`
 	Amount                         float64      `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
 	AttachmentTime                 float64      `json:"attachmentTime" gorm:"column:attachmentTime;type:decimal(20,10) NOT NULL"`
@@ -22,12 +22,12 @@ type Transaction struct {
 	TransactionDescription         string       `json:"transactionDescription" gorm:"column:transactionDescription;type:varchar(500) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	TrustChainConsensus            bool         `json:"trustChainConsensus" gorm:"column:trustChainConsensus;type:tinyint(4) DEFAULT NULL"`
 	TrustChainTrustScore           float64      `json:"trustChainTrustScore" gorm:"column:trustChainTrustScore;type:decimal(20,10) DEFAULT NULL"`
-	Type                           string       `json:"type" gorm:"column:type;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL"`
+	Type                           string       `json:"type" gorm:"column:type;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:type_INDEX"`
 	CreateTime                     time.Time    `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"`
 	UpdateTime                     time.Time    `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 }
 
-func(Transaction) TableName () string {
+func (Transaction) TableName() string {
 	return "transactions"
 }
 

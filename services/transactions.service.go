@@ -48,7 +48,7 @@ type txBuilder struct {
 
 var instance *transactionService
 
-// we made this one a singleton because it have a state
+// NewTransactionService we made this one a singleton because it has a state
 func NewTransactionService() TransactionService {
 	once.Do(func() {
 
@@ -57,7 +57,7 @@ func NewTransactionService() TransactionService {
 	return instance
 }
 
-// TODO: handle all errors by chanels
+// RunSync TODO: handle all errors by channels
 func (service *transactionService) RunSync() {
 
 	// 1) sync new transactions
@@ -95,12 +95,12 @@ func (service *transactionService) syncNewTransactions() {
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
-		iteration +=1
+		iteration += 1
 	}
 
 }
 
-func (service *transactionService) syncTransactionsIteration (maxTransactionsInSync int64, includeUnindexed *bool) {
+func (service *transactionService) syncTransactionsIteration(maxTransactionsInSync int64, includeUnindexed *bool) {
 	tx := dbprovider.DB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -172,9 +172,9 @@ func (service *transactionService) syncTransactionsIteration (maxTransactionsInS
 			var baseTransactionsToBeSaved []*entities.Transaction
 			m := map[string]txBuilder{}
 			for _, tx := range filteredTransactions {
-				dbtx := entities.NewTransaction(&tx)
-				baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbtx)
-				m[dbtx.Hash] = txBuilder{tx, dbtx}
+				dbTx := entities.NewTransaction(&tx)
+				baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbTx)
+				m[dbTx.Hash] = txBuilder{tx, dbTx}
 			}
 
 			// save all of them
@@ -259,7 +259,7 @@ func (service *transactionService) monitorTransactions() {
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
-		iteration +=1
+		iteration += 1
 	}
 }
 

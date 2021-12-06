@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Get all books
+// GetSyncState Get all books
 func GetSyncState(c *gin.Context) {
 	transactionService := service.NewTransactionService()
 	nodeTip := transactionService.GetTip().LastIndex
