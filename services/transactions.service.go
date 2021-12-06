@@ -134,9 +134,9 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	// making sure we don't handle too much in one iteration
 	endingIndex := lastMonitoredIndex
 	if tipIndex > startingIndex+maxTransactionsInSync {
-		endingIndex += maxTransactionsInSync
+		endingIndex += maxTransactionsInSync-1
 	} else {
-		endingIndex = int64(tipIndex) + 1
+		endingIndex = int64(tipIndex)
 		*includeUnindexed = true
 	}
 	transactions := service.getTransactions(startingIndex, endingIndex, *includeUnindexed)
