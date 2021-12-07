@@ -33,4 +33,3 @@ func NewReceiverBaseTransaction(tx *dto.BaseTransactionsRes, transactionId int32
 	instance.ReceiverDescription = tx.ReceiverDescription
 	return instance
 }
-

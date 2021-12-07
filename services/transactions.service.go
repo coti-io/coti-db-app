@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	dbprovider "github.com/coti-io/coti-db-app/db-provider"
+	"github.com/coti-io/coti-db-app/dto"
+	"github.com/coti-io/coti-db-app/entities"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/coti-io/coti-db-app/dto"
-	"github.com/coti-io/coti-db-app/entities"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -37,6 +37,7 @@ type TransactionService interface {
 	GetLastIterationTip() int64
 }
 type transactionService struct {
+	fullnodeUrl           string
 	isSyncRunning         bool
 	lastIterationIndexTip int64
 }
@@ -52,7 +53,7 @@ var instance *transactionService
 func NewTransactionService() TransactionService {
 	once.Do(func() {
 
-		instance = &transactionService{false, 0}
+		instance = &transactionService{os.Getenv("FULLNODE_URL"), false, 0}
 	})
 	return instance
 }
@@ -134,7 +135,7 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	// making sure we don't handle too much in one iteration
 	endingIndex := lastMonitoredIndex
 	if tipIndex > startingIndex+maxTransactionsInSync {
-		endingIndex += maxTransactionsInSync-1
+		endingIndex += maxTransactionsInSync - 1
 	} else {
 		endingIndex = int64(tipIndex)
 		*includeUnindexed = true
@@ -255,7 +256,7 @@ func (service *transactionService) monitorTransactions() {
 		diffInSeconds := diff.Seconds()
 		if diffInSeconds < 5 && diffInSeconds > 0 {
 			timeDurationToSleep := time.Duration(float64(5) - diffInSeconds)
-			fmt.Println("[syncNewTransactions][sleeping for] ", timeDurationToSleep)
+			fmt.Println("[monitorTransactions][sleeping for] ", timeDurationToSleep)
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
@@ -271,7 +272,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 		log.Fatal(err)
 	}
 
-	res, err := http.Post("https://testnet-staging-fullnode1.coti.io/transaction_batch", "application/json",
+	res, err := http.Post(service.fullnodeUrl+"/transaction_batch", "application/json",
 		bytes.NewBuffer(jsonData))
 
 	if err != nil {
@@ -286,7 +287,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 	var data []dto.TransactionResponse
 	json.Unmarshal(body, &data)
 	if includeUnindexed {
-		res, err := http.Get("https://testnet-staging-fullnode1.coti.io/transaction/none-indexed/batch")
+		res, err := http.Get(service.fullnodeUrl + "/transaction/none-indexed/batch")
 
 		if err != nil {
 			log.Fatal(err)
@@ -312,7 +313,7 @@ func (service *transactionService) getTransactionsByHash(hashArray []string) []d
 		log.Fatal(err)
 	}
 
-	res, err := http.Post("https://testnet-staging-fullnode1.coti.io/transaction/multiple", "application/json",
+	res, err := http.Post(service.fullnodeUrl+"/transaction/multiple", "application/json",
 		bytes.NewBuffer(jsonData))
 
 	if err != nil {
@@ -331,7 +332,7 @@ func (service *transactionService) getTransactionsByHash(hashArray []string) []d
 
 func (service *transactionService) GetTip() dto.TransactionsIndexTip {
 
-	res, err := http.Get("https://testnet-staging-fullnode1.coti.io/transaction/lastIndex")
+	res, err := http.Get(service.fullnodeUrl + "/transaction/lastIndex")
 
 	if err != nil {
 		log.Fatal(err)

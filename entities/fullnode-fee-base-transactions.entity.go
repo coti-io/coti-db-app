@@ -30,4 +30,3 @@ func NewFullnodeFeeBaseTransaction(tx *dto.BaseTransactionsRes, transactionId in
 	instance.OriginalAmount = tx.OriginalAmount
 	return instance
 }
-
