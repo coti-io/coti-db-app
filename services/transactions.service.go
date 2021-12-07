@@ -116,7 +116,7 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
 	var lastMonitoredIndex int64
 	if appState.Value == "" {
-		lastMonitoredIndex = 0
+		lastMonitoredIndex = -1
 	} else {
 		lastMonitoredIndexInt, err := strconv.Atoi(appState.Value)
 		if err != nil {
@@ -128,16 +128,14 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	tipDto := service.GetTip()
 	tipIndex := tipDto.LastIndex
 	service.lastIterationIndexTip = tipIndex
-	startingIndex := lastMonitoredIndex
-	if startingIndex != 0 {
-		startingIndex += 1
-	}
+	startingIndex := lastMonitoredIndex + 1
+
 	// making sure we don't handle too much in one iteration
-	endingIndex := lastMonitoredIndex
+	var endingIndex int64
 	if tipIndex > startingIndex+maxTransactionsInSync {
-		endingIndex += maxTransactionsInSync - 1
+		endingIndex = startingIndex + maxTransactionsInSync - 1
 	} else {
-		endingIndex = int64(tipIndex)
+		endingIndex = tipIndex
 		*includeUnindexed = true
 	}
 	transactions := service.getTransactions(startingIndex, endingIndex, *includeUnindexed)
@@ -185,9 +183,6 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 				return
 			}
 
-			if largestIndex < int(lastMonitoredIndex) {
-				largestIndex = int(lastMonitoredIndex)
-			}
 			appState.Value = strconv.Itoa(largestIndex)
 
 			if err := tx.Omit("CreateTime", "UpdateTime").Save(&appState).Error; err != nil {
@@ -265,6 +260,7 @@ func (service *transactionService) monitorTransactions() {
 }
 
 func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeUnindexed bool) []dto.TransactionResponse {
+	log.Printf("[getTransactions][Getting transactions from index %d to index %d with %t include unindexed]\n", startingIndex, endingIndex, includeUnindexed)
 	values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
 	jsonData, err := json.Marshal(values)
 
