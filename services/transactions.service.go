@@ -187,13 +187,6 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 				return
 			}
 
-			appState.Value = strconv.Itoa(largestIndex)
-
-			if err := tx.Omit("CreateTime", "UpdateTime").Save(&appState).Error; err != nil {
-				tx.Rollback()
-				log.Println(err)
-				return
-			}
 			if err := service.insertBaseTransactionsInputsOutputs(m, tx); err != nil {
 				tx.Rollback()
 				log.Println(err)
@@ -201,8 +194,17 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 			}
 
 		}
+		if int64(largestIndex) > lastMonitoredIndex {
+			appState.Value = strconv.Itoa(largestIndex)
 
+			if err := tx.Omit("CreateTime", "UpdateTime").Save(&appState).Error; err != nil {
+				tx.Rollback()
+				log.Println(err)
+				return
+			}
+		}
 	}
+
 	tx.Commit()
 }
 
