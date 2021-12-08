@@ -138,7 +138,11 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 		endingIndex = tipIndex
 		*includeUnindexed = true
 	}
-	transactions := service.getTransactions(startingIndex, endingIndex, *includeUnindexed)
+	var includeIndexed = true
+	if startingIndex > endingIndex {
+		includeIndexed = false
+	}
+	transactions := service.getTransactions(startingIndex, endingIndex, includeIndexed, *includeUnindexed)
 	if len(transactions) > 0 {
 		// get all the transactions hash
 		var txHashArray []interface{}
@@ -259,30 +263,34 @@ func (service *transactionService) monitorTransactions() {
 	}
 }
 
-func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeUnindexed bool) []dto.TransactionResponse {
-	log.Printf("[getTransactions][Getting transactions from index %d to index %d with %t include unindexed]\n", startingIndex, endingIndex, includeUnindexed)
-	values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
-	jsonData, err := json.Marshal(values)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	res, err := http.Post(service.fullnodeUrl+"/transaction_batch", "application/json",
-		bytes.NewBuffer(jsonData))
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		panic(err.Error())
-	}
-
+func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeIndexed bool, includeUnindexed bool) []dto.TransactionResponse {
 	var data []dto.TransactionResponse
-	json.Unmarshal(body, &data)
+
+	if includeIndexed {
+		log.Printf("[getTransactions][Getting transactions from index %d to index %d]\n", startingIndex, endingIndex)
+		values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
+		jsonData, err := json.Marshal(values)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		res, err := http.Post(service.fullnodeUrl+"/transaction_batch", "application/json",
+			bytes.NewBuffer(jsonData))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			panic(err.Error())
+		}
+		json.Unmarshal(body, &data)
+	}
+
 	if includeUnindexed {
+		log.Printf("[getTransactions][Getting unindexed transactions]\n")
 		res, err := http.Get(service.fullnodeUrl + "/transaction/none-indexed/batch")
 
 		if err != nil {
