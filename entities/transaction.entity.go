@@ -23,8 +23,8 @@ type Transaction struct {
 	TrustChainConsensus            bool         `json:"trustChainConsensus" gorm:"column:trustChainConsensus;type:tinyint(4) DEFAULT NULL"`
 	TrustChainTrustScore           float64      `json:"trustChainTrustScore" gorm:"column:trustChainTrustScore;type:decimal(20,10) DEFAULT NULL"`
 	Type                           string       `json:"type" gorm:"column:type;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:type_INDEX"`
-	CreateTime                     time.Time    `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"`
-	UpdateTime                     time.Time    `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
+	CreateTime                     time.Time    `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
+	UpdateTime                     time.Time    `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
 func (Transaction) TableName() string {
