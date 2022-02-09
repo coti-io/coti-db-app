@@ -1,4 +1,4 @@
-package dbprovider
+package dbProvider
 
 import (
 	"github.com/coti-io/coti-db-app/entities"

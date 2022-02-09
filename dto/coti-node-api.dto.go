@@ -9,7 +9,7 @@ type TransactionResponse struct {
 	Index                          int32                 `json:"index,omitempty"`
 	Amount                         float64               `json:"amount"`
 	AttachmentTime                 float64               `json:"attachmentTime"`
-	IsValid                        sql.NullBool          `json:"isValid"`
+	IsValid                        *bool                 `json:"isValid"`
 	CreateTime                     float64               `json:"createTime"`
 	LeftParentHash                 string                `json:"leftParentHash"`
 	RightParentHash                string                `json:"rightParentHash"`
@@ -37,9 +37,14 @@ type BaseTransactionsRes struct {
 	ReceiverDescription   sql.NullString `json:"receiverDescription"`
 }
 
-type TransactionsIndexTip struct {
+type TransactionsLastIndex struct {
 	Status    string `json:"status"`
 	LastIndex int64  `json:"lastIndex"`
+}
+
+type TransactionsLastIndexChanelResult struct {
+	Tran  TransactionsLastIndex
+	Error error
 }
 
 type TransactionByHashRequest struct {

@@ -3,10 +3,8 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	dbprovider "github.com/coti-io/coti-db-app/db-provider"
-	"github.com/coti-io/coti-db-app/dto"
-	"github.com/coti-io/coti-db-app/entities"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +14,10 @@ import (
 	"sync"
 	"time"
 
+	dbProvider "github.com/coti-io/coti-db-app/db-provider"
+	"github.com/coti-io/coti-db-app/dto"
+	"github.com/coti-io/coti-db-app/entities"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -24,22 +26,32 @@ var once sync.Once
 
 type BaseTransactionName string
 
-const (
-	IBT  BaseTransactionName = "IBT"
-	FFBT                     = "FFBT"
-	NFBT                     = "NFBT"
-	RBT                      = "RBT"
-)
+type SyncHistory struct {
+	LastIndexMainNode   int64
+	LastIndexBackupNode int64
+	IsSynced            bool
+}
+
+func isResError(res *http.Response) bool {
+	return res.StatusCode < 200 || res.StatusCode >= 300
+}
 
 type TransactionService interface {
 	RunSync()
-	GetTip() dto.TransactionsIndexTip
-	GetLastIterationTip() int64
+	GetLastIndex(fullnodeUrl string) <-chan dto.TransactionsLastIndexChanelResult
+	GetLastIteration() int64
+	GetFullnodeUrl() string
+	GetBackupFullnodeUrl() string
+	GetSyncHistory() SyncHistory
 }
 type transactionService struct {
-	fullnodeUrl           string
-	isSyncRunning         bool
-	lastIterationIndexTip int64
+	fullnodeUrl        string
+	backupFullnodeUrl  string
+	isSyncRunning      bool
+	lastIterationIndex int64
+	syncHistory        SyncHistory
+	retries            uint8
+	currentFullnodeUrl string
 }
 
 type txBuilder struct {
@@ -53,39 +65,137 @@ var instance *transactionService
 func NewTransactionService() TransactionService {
 	once.Do(func() {
 
-		instance = &transactionService{os.Getenv("FULLNODE_URL"), false, 0}
+		instance = &transactionService{
+			fullnodeUrl:        os.Getenv("FULLNODE_URL"),
+			backupFullnodeUrl:  os.Getenv("FULLNODE_BACKUP_URL"),
+			isSyncRunning:      false,
+			lastIterationIndex: 0,
+			syncHistory:        SyncHistory{LastIndexMainNode: 0, LastIndexBackupNode: 0, IsSynced: false},
+			retries:            0,
+			currentFullnodeUrl: os.Getenv("FULLNODE_URL"),
+		}
 	})
 	return instance
+}
+
+func (service *transactionService) GetFullnodeUrl() string {
+	return service.fullnodeUrl
+}
+func (service *transactionService) GetBackupFullnodeUrl() string {
+	return service.backupFullnodeUrl
+}
+
+func (service *transactionService) GetSyncHistory() SyncHistory {
+	return service.syncHistory
 }
 
 // RunSync TODO: handle all errors by channels
 func (service *transactionService) RunSync() {
 
-	// 1) sync new transactions
-	// 	  gets new indexed transactions and puts it in the db
-	// 2) update unverified  transactions
-	// 	  get all transactions with status that is not confirmed and check if they are and update
-
-	// flag if this one is already running and don't activate if true
 	if service.isSyncRunning {
 		return
 	}
 	service.isSyncRunning = true
 	// run sync tasks
-	go service.syncNewTransactions()
-	go service.monitorTransactions()
+	go service.monitorSyncStatus()
+	go service.syncNewTransactions(2)
+	go service.monitorTransactions(2)
 
 }
 
-func (service *transactionService) syncNewTransactions() {
+func (service *transactionService) monitorSyncStatus() {
+	iteration := 0
+	for {
+		dtStart := time.Now()
+		fmt.Println("[monitorSyncStatus][iteration start] " + strconv.Itoa(iteration))
+		iteration = iteration + 1
+		err := service.monitorSyncStatusIteration()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("[monitorSyncStatus][iteration end] " + strconv.Itoa(iteration))
+		dtEnd := time.Now()
+		diff := dtEnd.Sub(dtStart)
+		diffInSeconds := diff.Seconds()
+		timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+		fmt.Println("[monitorSyncStatus][sleeping for] ", timeDurationToSleep)
+		time.Sleep(timeDurationToSleep * time.Second)
+		iteration += 1
+	}
+}
+
+func (service *transactionService) monitorSyncStatusIteration() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("error in monitorSyncStatusIteration")
+		}
+	}()
+	mainNodeCh, backupNodeCh := service.GetLastIndex(service.fullnodeUrl), service.GetLastIndex(service.backupFullnodeUrl)
+	mainNodeRes, backupNodeRes := <-mainNodeCh, <-backupNodeCh
+	isMainNodeError := mainNodeRes.Error != nil || mainNodeRes.Tran.Status == "error"
+	isBackupNodeError := backupNodeRes.Error != nil || backupNodeRes.Tran.Status == "error"
+	if isMainNodeError && isBackupNodeError {
+		log.Println("Main fullnode and backup fullnode could not get last index")
+		service.syncHistory.IsSynced = false
+
+	} else if isMainNodeError {
+		log.Println("Main fullnode could not get last index")
+		service.syncHistory.IsSynced = false
+	} else {
+		if mainNodeRes.Tran.LastIndex >= backupNodeRes.Tran.LastIndex && service.lastIterationIndex >= mainNodeRes.Tran.LastIndex-100 {
+			service.syncHistory.IsSynced = true
+
+		} else if !isBackupNodeError {
+			if mainNodeRes.Tran.LastIndex < service.syncHistory.LastIndexBackupNode &&
+				float64(backupNodeRes.Tran.LastIndex-service.syncHistory.LastIndexBackupNode)*0.2 > float64(backupNodeRes.Tran.LastIndex-mainNodeRes.Tran.LastIndex) || service.lastIterationIndex < mainNodeRes.Tran.LastIndex-100 {
+				service.syncHistory.IsSynced = false
+			}
+			service.syncHistory.LastIndexBackupNode = backupNodeRes.Tran.LastIndex
+		} else {
+			if service.lastIterationIndex >= mainNodeRes.Tran.LastIndex-100 {
+				service.syncHistory.IsSynced = true
+			}
+		}
+		service.syncHistory.LastIndexMainNode = mainNodeRes.Tran.LastIndex
+	}
+	return nil
+}
+
+func (service *transactionService) getAlternateNodeUrl(fullnodeUrl string) string {
+	if fullnodeUrl == service.fullnodeUrl {
+		return service.backupFullnodeUrl
+	}
+	return service.backupFullnodeUrl
+}
+
+
+func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 	var maxTransactionsInSync int64 = 3000 // in the future replace by 1000 and export to config
 	var includeUnindexed = false
+
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
 	iteration := 0
 	for {
 		dtStart := time.Now()
 		fmt.Println("[syncNewTransactions][iteration start] " + strconv.Itoa(iteration))
-		service.syncTransactionsIteration(maxTransactionsInSync, &includeUnindexed)
+		for {
+			iteration = iteration + 1
+			err := service.syncTransactionsIteration(maxTransactionsInSync, &includeUnindexed, service.currentFullnodeUrl)
+			if err != nil {
+				fmt.Println(err)
+				if service.retries >= maxRetries {
+					service.currentFullnodeUrl = service.getAlternateNodeUrl(service.currentFullnodeUrl)
+					service.retries = 0
+					break
+				}
+				service.retries = service.retries + 1
+			} else {
+				service.retries = 0
+				break
+			}
+
+		}
+
 		fmt.Println("[syncNewTransactions][iteration end] " + strconv.Itoa(iteration))
 		dtEnd := time.Now()
 		diff := dtEnd.Sub(dtStart)
@@ -101,129 +211,170 @@ func (service *transactionService) syncNewTransactions() {
 
 }
 
-func (service *transactionService) syncTransactionsIteration(maxTransactionsInSync int64, includeUnindexed *bool) {
-	tx := dbprovider.DB.Begin()
+func (service *transactionService) syncTransactionsIteration(maxTransactionsInSync int64, includeUnindexed *bool, fullnodeUrl string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			tx.Rollback()
+			fmt.Println(r)
 		}
 	}()
-	if err := tx.Error; err != nil {
-		return
-	}
-	// get last monitored index - we need to consider updated transaction status. Is transaction that are not approved assigned an index?
-	var appState entities.AppState
-	tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
-	var lastMonitoredIndex int64
-	if appState.Value == "" {
-		lastMonitoredIndex = -1
-	} else {
-		lastMonitoredIndexInt, err := strconv.Atoi(appState.Value)
-		if err != nil {
-			panic(err)
+	err = dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) error {
+		var appState entities.AppState
+		dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
+		var lastMonitoredIndex int64
+		if appState.Value == "" {
+			lastMonitoredIndex = -1
+		} else {
+			lastMonitoredIndexInt, err := strconv.Atoi(appState.Value)
+			if err != nil {
+				return err
+			}
+			lastMonitoredIndex = int64(lastMonitoredIndexInt)
 		}
-		lastMonitoredIndex = int64(lastMonitoredIndexInt)
-	}
-	// get the tip
-	tipDto := service.GetTip()
-	tipIndex := tipDto.LastIndex
-	service.lastIterationIndexTip = tipIndex
-	startingIndex := lastMonitoredIndex + 1
-
-	// making sure we don't handle too much in one iteration
-	var endingIndex int64
-	if tipIndex > startingIndex+maxTransactionsInSync {
-		endingIndex = startingIndex + maxTransactionsInSync - 1
-	} else {
-		endingIndex = tipIndex
-		*includeUnindexed = true
-	}
-	var includeIndexed = true
-	if startingIndex > endingIndex {
-		includeIndexed = false
-	}
-	transactions := service.getTransactions(startingIndex, endingIndex, includeIndexed, *includeUnindexed)
-	if len(transactions) > 0 {
-		// get all the transactions hash
-		var txHashArray []interface{}
-		for _, tx := range transactions {
-			txHashArray = append(txHashArray, tx.Hash)
+		// get the tip
+		lastIndexDtoChannel := service.GetLastIndex(fullnodeUrl)
+		lastIndexObj := <-lastIndexDtoChannel
+		if lastIndexObj.Error != nil {
+			return lastIndexObj.Error
 		}
-		// find records with a tx hash like the one we got and filter them from the array
-		var dbTransactionsRes []entities.Transaction
-		tx.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
+		service.lastIterationIndex = lastIndexObj.Tran.LastIndex
+		startingIndex := lastMonitoredIndex + 1
 
-		var filteredTransactions []dto.TransactionResponse
+		// making sure we don't handle too much in one iteration
+		var endingIndex int64
+		if service.lastIterationIndex > startingIndex+maxTransactionsInSync {
+			endingIndex = startingIndex + maxTransactionsInSync - 1
+		} else {
+			endingIndex = service.lastIterationIndex
+			*includeUnindexed = true
+		}
+		var includeIndexed = true
+		if startingIndex > endingIndex {
+			includeIndexed = false
+		}
+		transactions := service.getTransactions(startingIndex, endingIndex, includeIndexed, *includeUnindexed, fullnodeUrl)
+		if len(transactions) > 0 {
+			// get all the transactions hash
+			var txHashArray []interface{}
+			for _, tx := range transactions {
+				txHashArray = append(txHashArray, tx.Hash)
+			}
+			// find records with a tx hash like the one we got and filter them from the array
+			var dbTransactionsRes []entities.Transaction
+			dbTransaction.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
 
-		largestIndex := 0
-		for _, tx := range transactions {
-			exists := false
-			for _, dbTx := range dbTransactionsRes {
-				if dbTx.Hash == tx.Hash {
-					exists = true
+			var filteredTransactions []dto.TransactionResponse
+
+			largestIndex := 0
+			for _, tx := range transactions {
+				exists := false
+				for _, dbTx := range dbTransactionsRes {
+					if dbTx.Hash == tx.Hash {
+						exists = true
+					}
+				}
+				if largestIndex < int(tx.Index) {
+					largestIndex = int(tx.Index)
+				}
+				if !exists {
+					filteredTransactions = append(filteredTransactions, tx)
 				}
 			}
-			if largestIndex < int(tx.Index) {
-				largestIndex = int(tx.Index)
+			if len(filteredTransactions) > 0 {
+				// prepare all the transactions to be saved
+				var baseTransactionsToBeSaved []*entities.Transaction
+				m := map[string]txBuilder{}
+				for _, tx := range filteredTransactions {
+					dbTx := entities.NewTransaction(&tx)
+					baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbTx)
+					m[dbTx.Hash] = txBuilder{tx, dbTx}
+				}
+
+				// save all of them
+				if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&baseTransactionsToBeSaved).Error; err != nil {
+					return err
+				}
+
+				if err := service.insertBaseTransactionsInputsOutputs(m, dbTransaction); err != nil {
+					return err
+				}
+
 			}
-			if !exists {
-				filteredTransactions = append(filteredTransactions, tx)
+			if int64(largestIndex) > lastMonitoredIndex {
+				appState.Value = strconv.Itoa(largestIndex)
+
+				if err := dbTransaction.Omit("CreateTime", "UpdateTime").Save(&appState).Error; err != nil {
+					return err
+				}
 			}
 		}
-		if len(filteredTransactions) > 0 {
-			// prepare all the transactions to be saved
-			var baseTransactionsToBeSaved []*entities.Transaction
-			m := map[string]txBuilder{}
-			for _, tx := range filteredTransactions {
-				dbTx := entities.NewTransaction(&tx)
-				baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbTx)
-				m[dbTx.Hash] = txBuilder{tx, dbTx}
-			}
 
-			// save all of them
-			if err := tx.Omit("CreateTime", "UpdateTime").Create(&baseTransactionsToBeSaved).Error; err != nil {
-				tx.Rollback()
-				log.Println(err)
-				return
-			}
-
-			if err := service.insertBaseTransactionsInputsOutputs(m, tx); err != nil {
-				tx.Rollback()
-				log.Println(err)
-				return
-			}
-
-		}
-		if int64(largestIndex) > lastMonitoredIndex {
-			appState.Value = strconv.Itoa(largestIndex)
-
-			if err := tx.Omit("CreateTime", "UpdateTime").Save(&appState).Error; err != nil {
-				tx.Rollback()
-				log.Println(err)
-				return
-			}
-		}
-	}
-
-	tx.Commit()
+		return nil
+	})
+	return err
 }
 
-func (service *transactionService) monitorTransactions() {
+func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	iteration := 0
 	for {
 		dtStart := time.Now()
 		fmt.Println("[monitorTransactions][iteration start] " + strconv.Itoa(iteration))
-		// get all transaction that have index or with status attached to dag from db
-		var dbTransactions []entities.Transaction
-		dbprovider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions)
-		m := map[string]entities.Transaction{}
-		var hashArray []string
-		for _, tx := range dbTransactions {
-			m[tx.Hash] = tx
-			hashArray = append(hashArray, tx.Hash)
+
+		for {
+			iteration = iteration + 1
+			err := service.monitorTransactionIteration(service.currentFullnodeUrl)
+			if err != nil {
+				fmt.Println(err)
+
+				// retry or try with replacement
+				if service.retries >= maxRetries {
+					service.currentFullnodeUrl = service.getAlternateNodeUrl(service.currentFullnodeUrl)
+					service.retries = 0
+					break
+				}
+				service.retries = service.retries + 1
+			} else {
+				service.retries = 0
+				break
+			}
 		}
+		fmt.Println("[monitorTransactions][iteration end] " + strconv.Itoa(iteration))
+		dtEnd := time.Now()
+		diff := dtEnd.Sub(dtStart)
+		diffInSeconds := diff.Seconds()
+		if diffInSeconds < 5 && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(float64(5) - diffInSeconds)
+			fmt.Println("[monitorTransactions][sleeping for] ", timeDurationToSleep)
+			time.Sleep(timeDurationToSleep * time.Second)
+
+		}
+		iteration += 1
+	}
+}
+
+func (service *transactionService) monitorTransactionIteration(fullnodeUrl string) error {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("[monitorTransactionIteration][error] ")
+		}
+	}()
+	// get all indexed transaction or with status attached to dag from db
+	var dbTransactions []entities.Transaction
+	err := dbProvider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions).Error
+	if err != nil {
+		return err
+	}
+	m := map[string]entities.Transaction{}
+	var hashArray []string
+	for _, tx := range dbTransactions {
+		m[tx.Hash] = tx
+		hashArray = append(hashArray, tx.Hash)
+	}
+	if hashArray != nil {
 		// get the transactions from the node
-		transactions := service.getTransactionsByHash(hashArray)
+		transactions, err := service.getTransactionsByHash(hashArray, fullnodeUrl)
+		if err != nil {
+			return err
+		}
 		// update the transactions
 		var transactionToSave []*entities.Transaction
 		for _, tx := range transactions {
@@ -246,26 +397,16 @@ func (service *transactionService) monitorTransactions() {
 			}
 		}
 		if len(transactionToSave) > 0 {
-			result := dbprovider.DB.Omit("CreateTime", "UpdateTime").Save(&transactionToSave)
-
-			log.Println(result)
+			err := dbProvider.DB.Omit("CreateTime", "UpdateTime").Save(&transactionToSave).Error
+			if err != nil {
+				return err
+			}
 		}
-
-		fmt.Println("[monitorTransactions][iteration end] " + strconv.Itoa(iteration))
-		dtEnd := time.Now()
-		diff := dtEnd.Sub(dtStart)
-		diffInSeconds := diff.Seconds()
-		if diffInSeconds < 5 && diffInSeconds > 0 {
-			timeDurationToSleep := time.Duration(float64(5) - diffInSeconds)
-			fmt.Println("[monitorTransactions][sleeping for] ", timeDurationToSleep)
-			time.Sleep(timeDurationToSleep * time.Second)
-
-		}
-		iteration += 1
 	}
+	return nil
 }
 
-func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeIndexed bool, includeUnindexed bool) []dto.TransactionResponse {
+func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeIndexed bool, includeUnindexed bool, fullnodeUrl string) []dto.TransactionResponse {
 	var data []dto.TransactionResponse
 
 	if includeIndexed {
@@ -274,29 +415,40 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 		jsonData, err := json.Marshal(values)
 
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 
-		res, err := http.Post(service.fullnodeUrl+"/transaction_batch", "application/json",
+		res, err := http.Post(fullnodeUrl+"/transaction_batch", "application/json",
 			bytes.NewBuffer(jsonData))
 
 		if err != nil {
-			log.Fatal(err)
+			panic(err.Error())
+		}
+
+		if isResError(res) {
+			panic(res.Status)
 		}
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			panic(err.Error())
 		}
-		json.Unmarshal(body, &data)
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	if includeUnindexed {
 		log.Printf("[getTransactions][Getting unindexed transactions]\n")
-		res, err := http.Get(service.fullnodeUrl + "/transaction/none-indexed/batch")
+		res, err := http.Get(fullnodeUrl + "/transaction/none-indexed/batch")
 
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
+		}
+
+		if isResError(res) {
+			panic(res.Status)
 		}
 
 		body, err := ioutil.ReadAll(res.Body)
@@ -305,57 +457,92 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 		}
 
 		var unindexedData []dto.TransactionResponse
-		json.Unmarshal(body, &unindexedData)
+		err = json.Unmarshal(body, &unindexedData)
+		if err != nil {
+			panic(err.Error())
+		}
 		data = append(data, unindexedData...)
 	}
 	return data
 }
 
-func (service *transactionService) getTransactionsByHash(hashArray []string) []dto.TransactionResponse {
+func (service *transactionService) getTransactionsByHash(hashArray []string, fullnodeUrl string) (txs []dto.TransactionResponse, err error) {
 	values := map[string][]string{"transactionHashes": hashArray}
 	jsonData, err := json.Marshal(values)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	res, err := http.Post(service.fullnodeUrl+"/transaction/multiple", "application/json",
+	res, err := http.Post(fullnodeUrl+"/transaction/multiple", "application/json",
 		bytes.NewBuffer(jsonData))
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
+	}
+
+	if isResError(res) {
+		return nil, errors.New(res.Status)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
 	var data []dto.TransactionResponse
-	json.Unmarshal(body, &data)
-	return data
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
-func (service *transactionService) GetTip() dto.TransactionsIndexTip {
+func (service *transactionService) GetLastIndex(fullnodeUrl string) <-chan dto.TransactionsLastIndexChanelResult {
 
-	res, err := http.Get(service.fullnodeUrl + "/transaction/lastIndex")
+	r := make(chan dto.TransactionsLastIndexChanelResult)
+	go func() {
+		defer close(r)
+		channelResult := dto.TransactionsLastIndexChanelResult{}
 
-	if err != nil {
-		log.Fatal(err)
-	}
+		res, err := http.Get(fullnodeUrl + "/transaction/lastIndex")
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		panic(err.Error())
-	}
+		if err != nil {
+			channelResult.Error = err
+			r <- channelResult
+			return
 
-	var data dto.TransactionsIndexTip
-	json.Unmarshal(body, &data)
-	return data
+		}
+
+		if isResError(res) {
+			channelResult.Error = errors.New(res.Status)
+			r <- channelResult
+			return
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			channelResult.Error = err
+			r <- channelResult
+			return
+		}
+
+		var data dto.TransactionsLastIndex
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			channelResult.Error = err
+			r <- channelResult
+			return
+		}
+		channelResult.Tran = data
+		r <- channelResult
+	}()
+
+	return r
 }
 
-func (service *transactionService) GetLastIterationTip() int64 {
-	return service.lastIterationIndexTip
+func (service *transactionService) GetLastIteration() int64 {
+	return service.lastIterationIndex
 }
 
 func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[string]txBuilder, tx *gorm.DB) error {

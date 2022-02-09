@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -16,8 +17,11 @@ import (
 // GetSyncState Get all books
 func GetSyncState(c *gin.Context) {
 	transactionService := service.NewTransactionService()
-	nodeTip := transactionService.GetTip().LastIndex
-	syncIterationNodeIndexTip := transactionService.GetLastIterationTip()
+	// check both nodes for last index
+	syncHistory := transactionService.GetSyncHistory()
+
+	nodeLastIndex := int64(math.Max(float64(syncHistory.LastIndexMainNode), float64(syncHistory.LastIndexBackupNode)))
+	syncIterationLastTransactionIndex := transactionService.GetLastIteration()
 	var appState entities.AppState
 	dbprovider.DB.Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
 	var lastMonitoredIndex int64
@@ -26,8 +30,7 @@ func GetSyncState(c *gin.Context) {
 		panic(err)
 	}
 	lastMonitoredIndex = int64(lastMonitoredIndexInt)
-	description := ``
-	syncPercentage := (lastMonitoredIndex / syncIterationNodeIndexTip) * 100
+	syncPercentage := (float64(lastMonitoredIndex) / float64(syncIterationLastTransactionIndex)) * 100
 
-	c.JSON(http.StatusOK, gin.H{"data": dto.SyncResponse{nodeTip, syncIterationNodeIndexTip, lastMonitoredIndex, syncPercentage, description}})
+	c.JSON(http.StatusOK, gin.H{"data": dto.SyncResponse{NodeMaxIndex: nodeLastIndex, NodeLastIndex: syncHistory.LastIndexMainNode, BackupNodeLastIndex: syncHistory.LastIndexBackupNode, SyncIterationLastTransactionIndex: syncIterationLastTransactionIndex, LastMonitoredTransactionIndex: lastMonitoredIndex, SyncPercentage: syncPercentage, IsNodeSynced: syncHistory.IsSynced}})
 }

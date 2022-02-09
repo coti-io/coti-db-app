@@ -36,7 +36,6 @@ func NewTransaction(tx *dto.TransactionResponse) *Transaction {
 	instance.Hash = tx.Hash
 	instance.Index = tx.Index
 	instance.Amount = tx.Amount
-	instance.IsValid = tx.IsValid
 	instance.AttachmentTime = tx.AttachmentTime
 	instance.TransactionCreateTime = tx.CreateTime
 	instance.LeftParentHash = tx.LeftParentHash
