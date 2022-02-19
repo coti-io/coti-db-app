@@ -100,6 +100,7 @@ func (service *transactionService) RunSync() {
 	go service.monitorSyncStatus()
 	go service.syncNewTransactions(2)
 	go service.monitorTransactions(2)
+	go service.cleanUnindexedTransaction()
 
 }
 
@@ -168,6 +169,90 @@ func (service *transactionService) getAlternateNodeUrl(fullnodeUrl string) strin
 	return service.backupFullnodeUrl
 }
 
+func (service *transactionService) cleanUnindexedTransaction() {
+	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
+	iteration := 0
+	for {
+		dtStart := time.Now()
+		fmt.Println("[cleanUnindexedTransaction][iteration start] " + strconv.Itoa(iteration))
+		iteration = iteration + 1
+		err := service.cleanUnindexedTransactionIteration()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println("[cleanUnindexedTransaction][iteration end] " + strconv.Itoa(iteration))
+		dtEnd := time.Now()
+		diff := dtEnd.Sub(dtStart)
+		diffInSeconds := diff.Seconds()
+		if diffInSeconds < 10 && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+			fmt.Println("[cleanUnindexedTransaction][sleeping for] ", timeDurationToSleep)
+			time.Sleep(timeDurationToSleep * time.Second)
+
+		}
+	}
+}
+
+func (service *transactionService) cleanUnindexedTransactionIteration() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("error in cleanUnindexedTransactionIteration")
+		}
+	}()
+	err := dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) error {
+		// get all indexed transaction or with status attached to dag from db
+		var appState entities.AppState
+		err := dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.MonitorTransaction).First(&appState).Error
+		if err != nil {
+			return err
+		}
+		// find transactions where index = 0, transactionConsensusUpdateTime = 0 and create time is 20min old
+		var txs []entities.Transaction
+		var ffbts []entities.FullnodeFeeBaseTransaction
+		var nfbts []entities.NetworkFeeBaseTransaction
+		var rbts []entities.ReceiverBaseTransaction
+		var ibts []entities.InputBaseTransaction
+		err = dbTransaction.Where("`index` = 0 AND transactionConsensusUpdateTime = 0 AND createTime < DATE_ADD(NOW(), INTERVAL 2 HOUR)").Find(&txs).Error
+		if err != nil {
+			return err
+		}
+		if len(txs) == 0 {
+			fmt.Println("[cleanUnindexedTransactionIteration][no transactions to delete was found]")
+			return nil
+		}
+		var transactionIds []int32
+		for _, v := range txs {
+			transactionIds = append(transactionIds, v.ID)
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&ffbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&nfbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&rbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&ibts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"id": transactionIds}).Delete(&txs).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 	var maxTransactionsInSync int64 = 3000 // in the future replace by 1000 and export to config
@@ -176,10 +261,10 @@ func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
 	iteration := 0
 	for {
+		iteration = iteration + 1
 		dtStart := time.Now()
 		fmt.Println("[syncNewTransactions][iteration start] " + strconv.Itoa(iteration))
 		for {
-			iteration = iteration + 1
 			err := service.syncTransactionsIteration(maxTransactionsInSync, &includeUnindexed, service.currentFullnodeUrl)
 			if err != nil {
 				fmt.Println(err)
@@ -206,7 +291,6 @@ func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
-		iteration += 1
 	}
 
 }
@@ -219,7 +303,10 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	}()
 	err = dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) error {
 		var appState entities.AppState
-		dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState)
+		err := dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.LastMonitoredTransactionIndex).First(&appState).Error
+		if err != nil {
+			return err
+		}
 		var lastMonitoredIndex int64
 		if appState.Value == "" {
 			lastMonitoredIndex = -1
@@ -316,11 +403,11 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	iteration := 0
 	for {
+		iteration = iteration + 1
 		dtStart := time.Now()
 		fmt.Println("[monitorTransactions][iteration start] " + strconv.Itoa(iteration))
 
 		for {
-			iteration = iteration + 1
 			err := service.monitorTransactionIteration(service.currentFullnodeUrl)
 			if err != nil {
 				fmt.Println(err)
@@ -331,7 +418,6 @@ func (service *transactionService) monitorTransactions(maxRetries uint8) {
 					service.retries = 0
 					break
 				}
-				service.retries = service.retries + 1
 			} else {
 				service.retries = 0
 				break
@@ -347,7 +433,6 @@ func (service *transactionService) monitorTransactions(maxRetries uint8) {
 			time.Sleep(timeDurationToSleep * time.Second)
 
 		}
-		iteration += 1
 	}
 }
 
@@ -357,53 +442,62 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 			fmt.Println("[monitorTransactionIteration][error] ")
 		}
 	}()
-	// get all indexed transaction or with status attached to dag from db
-	var dbTransactions []entities.Transaction
-	err := dbProvider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions).Error
-	if err != nil {
-		return err
-	}
-	m := map[string]entities.Transaction{}
-	var hashArray []string
-	for _, tx := range dbTransactions {
-		m[tx.Hash] = tx
-		hashArray = append(hashArray, tx.Hash)
-	}
-	if hashArray != nil {
-		// get the transactions from the node
-		transactions, err := service.getTransactionsByHash(hashArray, fullnodeUrl)
+
+	err := dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) error {
+		// get all indexed transaction or with status attached to dag from db
+		var appState entities.AppState
+		err := dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.MonitorTransaction).First(&appState).Error
 		if err != nil {
 			return err
 		}
-		// update the transactions
-		var transactionToSave []*entities.Transaction
-		for _, tx := range transactions {
-			isChanged := false
-			txToSave := m[tx.Hash]
-			if tx.TransactionConsensusUpdateTime != txToSave.TransactionConsensusUpdateTime {
-				isChanged = true
-				txToSave.TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
-			}
-			if tx.TrustChainConsensus != txToSave.TrustChainConsensus {
-				isChanged = true
-				txToSave.TrustChainConsensus = tx.TrustChainConsensus
-			}
-			if tx.Index != txToSave.Index {
-				isChanged = true
-				txToSave.Index = tx.Index
-			}
-			if isChanged {
-				transactionToSave = append(transactionToSave, &txToSave)
-			}
+		var dbTransactions []entities.Transaction
+		err = dbProvider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions).Error
+		if err != nil {
+			return err
 		}
-		if len(transactionToSave) > 0 {
-			err := dbProvider.DB.Omit("CreateTime", "UpdateTime").Save(&transactionToSave).Error
+		m := map[string]entities.Transaction{}
+		var hashArray []string
+		for _, tx := range dbTransactions {
+			m[tx.Hash] = tx
+			hashArray = append(hashArray, tx.Hash)
+		}
+		if hashArray != nil {
+			// get the transactions from the node
+			transactions, err := service.getTransactionsByHash(hashArray, fullnodeUrl)
 			if err != nil {
 				return err
 			}
+			// update the transactions
+			var transactionToSave []*entities.Transaction
+			for _, tx := range transactions {
+				isChanged := false
+				txToSave := m[tx.Hash]
+				if tx.TransactionConsensusUpdateTime != txToSave.TransactionConsensusUpdateTime {
+					isChanged = true
+					txToSave.TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
+				}
+				if tx.TrustChainConsensus != txToSave.TrustChainConsensus {
+					isChanged = true
+					txToSave.TrustChainConsensus = tx.TrustChainConsensus
+				}
+				if tx.Index != txToSave.Index {
+					isChanged = true
+					txToSave.Index = tx.Index
+				}
+				if isChanged {
+					transactionToSave = append(transactionToSave, &txToSave)
+				}
+			}
+			if len(transactionToSave) > 0 {
+				err := dbProvider.DB.Omit("CreateTime", "UpdateTime").Save(&transactionToSave).Error
+				if err != nil {
+					return err
+				}
+			}
 		}
-	}
-	return nil
+		return nil
+	})
+	return err
 }
 
 func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeIndexed bool, includeUnindexed bool, fullnodeUrl string) []dto.TransactionResponse {

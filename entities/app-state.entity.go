@@ -8,6 +8,7 @@ type AppStatesNames string
 
 const (
 	LastMonitoredTransactionIndex AppStatesNames = "lastMonitoredTransactionIndex"
+	MonitorTransaction AppStatesNames = "monitorTransaction"
 )
 
 type AppState struct {

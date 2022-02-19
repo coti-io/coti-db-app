@@ -43,9 +43,14 @@ func main() {
 
 func verifyAppStates() {
 	// TODO find a way to iterate over the enum in the top of the page
-	appState := entities.AppState{Name: entities.LastMonitoredTransactionIndex}
-	appStateRes := dbprovider.DB.Where("name = ?", entities.LastMonitoredTransactionIndex).FirstOrCreate(&appState)
-	if appStateRes.Error != nil {
-		panic(appStateRes.Error)
+	appStateLastMonitoredTransactionIndex := entities.AppState{Name: entities.LastMonitoredTransactionIndex}
+	appStateLastMonitoredTransactionIndexRes := dbprovider.DB.Where("name = ?", entities.LastMonitoredTransactionIndex).FirstOrCreate(&appStateLastMonitoredTransactionIndex)
+	if appStateLastMonitoredTransactionIndexRes.Error != nil {
+		panic(appStateLastMonitoredTransactionIndexRes.Error)
+	}
+	appStateMonitorTransaction := entities.AppState{Name: entities.MonitorTransaction}
+	appStateMonitorTransactionRes := dbprovider.DB.Where("name = ?", entities.MonitorTransaction).FirstOrCreate(&appStateMonitorTransaction)
+	if appStateMonitorTransactionRes.Error != nil {
+		panic(appStateMonitorTransactionRes.Error)
 	}
 }
