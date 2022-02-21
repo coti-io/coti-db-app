@@ -35,6 +35,8 @@ type BaseTransactionsRes struct {
 	ReducedAmount         float64        `json:"reducedAmount"`
 	ReceiverCreateTime    float64        `json:"receiverCreateTime"`
 	ReceiverDescription   sql.NullString `json:"receiverDescription"`
+	CurrencyHash          sql.NullString `json:"currencyHash"`
+	OriginalCurrencyHash  sql.NullString `json:"originalCurrencyHash"`
 }
 
 type TransactionsLastIndex struct {

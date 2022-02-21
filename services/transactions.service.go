@@ -52,6 +52,7 @@ type transactionService struct {
 	syncHistory        SyncHistory
 	retries            uint8
 	currentFullnodeUrl string
+	serviceUpTime      time.Time
 }
 
 type txBuilder struct {
@@ -73,6 +74,7 @@ func NewTransactionService() TransactionService {
 			syncHistory:        SyncHistory{LastIndexMainNode: 0, LastIndexBackupNode: 0, IsSynced: false},
 			retries:            0,
 			currentFullnodeUrl: os.Getenv("FULLNODE_URL"),
+			serviceUpTime:      time.Now(),
 		}
 	})
 	return instance
@@ -101,6 +103,7 @@ func (service *transactionService) RunSync() {
 	go service.syncNewTransactions(2)
 	go service.monitorTransactions(2)
 	go service.cleanUnindexedTransaction()
+	go service.updateBalances()
 
 }
 
@@ -124,6 +127,7 @@ func (service *transactionService) monitorSyncStatus() {
 		iteration += 1
 	}
 }
+
 
 func (service *transactionService) monitorSyncStatusIteration() error {
 	defer func() {
@@ -194,26 +198,179 @@ func (service *transactionService) cleanUnindexedTransaction() {
 	}
 }
 
+func (service *transactionService) updateBalances() {
+	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
+	iteration := 0
+	for {
+		dtStart := time.Now()
+		fmt.Println("[updateBalances][iteration start] " + strconv.Itoa(iteration))
+		iteration = iteration + 1
+		err := service.updateBalancesIteration()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println("[updateBalances][iteration end] " + strconv.Itoa(iteration))
+		dtEnd := time.Now()
+		diff := dtEnd.Sub(dtStart)
+		diffInSeconds := diff.Seconds()
+		if diffInSeconds < 10 && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+			fmt.Println("[updateBalances][sleeping for] ", timeDurationToSleep)
+			time.Sleep(timeDurationToSleep * time.Second)
+
+		}
+	}
+}
+
+func (service *transactionService) updateBalancesIteration() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("error in updateBalancesIteration")
+		}
+	}()
+	err := dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) (err error) {
+		var appState entities.AppState
+		err = dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.UpdateBalances).First(&appState).Error
+		if err != nil {
+			return err
+		}
+		// get all transaction with consensus and not processed
+		// get all indexed transaction or with status attached to dag from db
+		var txs []entities.Transaction
+		var ffbts []entities.FullnodeFeeBaseTransaction
+		var nfbts []entities.NetworkFeeBaseTransaction
+		var rbts []entities.ReceiverBaseTransaction
+		var ibts []entities.InputBaseTransaction
+		err = dbTransaction.Where("`isProcessed` = 0 AND transactionConsensusUpdateTime > 0 ").Limit(3000).Find(&txs).Error
+		if err != nil {
+			return err
+		}
+		if len(txs) == 0 {
+			fmt.Println("[updateBalancesIteration][no transactions to delete was found]")
+			return nil
+		}
+		var transactionIds []int32
+		for i, v := range txs {
+			txs[i].IsProcessed = true
+			transactionIds = append(transactionIds, v.ID)
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&ffbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&nfbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&rbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&ibts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Save(&txs).Error
+		if err != nil {
+			return err
+		}
+		var addressBalanceDiffMap = make(map[string]float64)
+		for _, tx := range ffbts {
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+		}
+		for _, tx := range nfbts {
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+		}
+		for _, tx := range rbts {
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+		}
+		for _, tx := range ibts {
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+		}
+		nativeCurrencyHash := "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01"
+		nativeCurrency := entities.Currency{}
+		nativeCurrencyError := dbTransaction.Where("hash = ?", nativeCurrencyHash).First(&nativeCurrency).Error
+		if nativeCurrencyError != nil {
+			return nativeCurrencyError
+		}
+		// get all address balances that exists
+		var addressesHash []interface{}
+		for key := range addressBalanceDiffMap {
+			addressesHash = append(addressesHash, key)
+		}
+		var dbAddressBalanceToCreate []entities.AddressBalance
+		var dbAddressBalanceRes []entities.AddressBalance
+		err = dbTransaction.Where("addressHash IN (?"+strings.Repeat(",?", len(addressesHash)-1)+")", addressesHash...).Find(&dbAddressBalanceRes).Error
+		if err != nil {
+			return err
+		}
+		// can be improved with map of
+		// update balance if exists
+		for key, value := range addressBalanceDiffMap {
+			exists := false
+			for i, addressBalance := range dbAddressBalanceRes {
+				if addressBalance.AddressHash == key {
+					exists = true
+					dbAddressBalanceRes[i].Amount += value
+				}
+			}
+			// create record if not exists
+			if !exists {
+				// create a new address balance
+				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(key, value, nativeCurrency.ID))
+
+			}
+		}
+		if len(dbAddressBalanceToCreate) > 0 {
+			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&dbAddressBalanceToCreate).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(dbAddressBalanceRes) > 0 {
+			if err := dbTransaction.Save(&dbAddressBalanceRes).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	return err
+}
+
 func (service *transactionService) cleanUnindexedTransactionIteration() error {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("error in cleanUnindexedTransactionIteration")
 		}
 	}()
-	err := dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) error {
-		// get all indexed transaction or with status attached to dag from db
+	deleteTxDelayInHours, err := strconv.ParseFloat(os.Getenv("DELETE_TX_DELAY_IN_HOURS"), 64)
+
+	if err != nil {
+		return err
+	}
+	deleteTxPendingMinHours := os.Getenv("DELETE_TX_PENDING_MIN_HOURS")
+
+	currTime := time.Now()
+	diffTimeInHours := currTime.Sub(service.serviceUpTime).Hours()
+	if diffTimeInHours < deleteTxDelayInHours {
+		fmt.Println("[cleanUnindexedTransactionIteration][skip delete, time to start is not upon us]")
+		return nil
+	}
+	err = dbProvider.DB.Transaction(func(dbTransaction *gorm.DB) error {
 		var appState entities.AppState
-		err := dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.MonitorTransaction).First(&appState).Error
+		err = dbTransaction.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", entities.DeleteUnindexedTransactions).First(&appState).Error
 		if err != nil {
 			return err
 		}
-		// find transactions where index = 0, transactionConsensusUpdateTime = 0 and create time is 20min old
+		// get all indexed transaction or with status attached to dag from db
 		var txs []entities.Transaction
 		var ffbts []entities.FullnodeFeeBaseTransaction
 		var nfbts []entities.NetworkFeeBaseTransaction
 		var rbts []entities.ReceiverBaseTransaction
 		var ibts []entities.InputBaseTransaction
-		err = dbTransaction.Where("`index` = 0 AND transactionConsensusUpdateTime = 0 AND createTime < DATE_ADD(NOW(), INTERVAL 2 HOUR)").Find(&txs).Error
+		err = dbTransaction.Where("`index` = 0 AND transactionConsensusUpdateTime = 0 AND createTime < DATE_SUB(NOW(), INTERVAL ? HOUR)", deleteTxPendingMinHours).Find(&txs).Error
 		if err != nil {
 			return err
 		}
@@ -347,38 +504,58 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 			}
 			// find records with a tx hash like the one we got and filter them from the array
 			var dbTransactionsRes []entities.Transaction
-			dbTransaction.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes)
-
-			var filteredTransactions []dto.TransactionResponse
+			err = dbTransaction.Where("hash IN (?"+strings.Repeat(",?", len(txHashArray)-1)+")", txHashArray...).Find(&dbTransactionsRes).Error
+			if err != nil {
+				return err
+			}
+			var newTransactions []dto.TransactionResponse
 
 			largestIndex := 0
 			for _, tx := range transactions {
 				exists := false
 				for _, dbTx := range dbTransactionsRes {
-					if dbTx.Hash == tx.Hash {
+					if dbTx.Hash == tx.Hash && dbTx.Index == 0 {
 						exists = true
+						if tx.TransactionConsensusUpdateTime != dbTx.TransactionConsensusUpdateTime {
+							dbTx.TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
+						}
+						if tx.TrustChainConsensus != dbTx.TrustChainConsensus {
+							dbTx.TrustChainConsensus = tx.TrustChainConsensus
+						}
+						if tx.Index != dbTx.Index {
+							dbTx.Index = tx.Index
+						}
 					}
 				}
 				if largestIndex < int(tx.Index) {
 					largestIndex = int(tx.Index)
 				}
 				if !exists {
-					filteredTransactions = append(filteredTransactions, tx)
+					newTransactions = append(newTransactions, tx)
 				}
 			}
-			if len(filteredTransactions) > 0 {
+			if len(dbTransactionsRes) > 0 {
+				if err := dbTransaction.Save(&dbTransactionsRes).Error; err != nil {
+					return err
+				}
+			}
+
+			if len(newTransactions) > 0 {
+
 				// prepare all the transactions to be saved
 				var baseTransactionsToBeSaved []*entities.Transaction
 				m := map[string]txBuilder{}
-				for _, tx := range filteredTransactions {
+				for _, tx := range newTransactions {
 					dbTx := entities.NewTransaction(&tx)
 					baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbTx)
 					m[dbTx.Hash] = txBuilder{tx, dbTx}
 				}
 
 				// save all of them
-				if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&baseTransactionsToBeSaved).Error; err != nil {
-					return err
+				if len(baseTransactionsToBeSaved) > 0 {
+					if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&baseTransactionsToBeSaved).Error; err != nil {
+						return err
+					}
 				}
 
 				if err := service.insertBaseTransactionsInputsOutputs(m, dbTransaction); err != nil {
@@ -386,6 +563,7 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 				}
 
 			}
+
 			if int64(largestIndex) > lastMonitoredIndex {
 				appState.Value = strconv.Itoa(largestIndex)
 
@@ -399,6 +577,7 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	})
 	return err
 }
+
 
 func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	iteration := 0
@@ -436,6 +615,7 @@ func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	}
 }
 
+
 func (service *transactionService) monitorTransactionIteration(fullnodeUrl string) error {
 	defer func() {
 		if r := recover(); r != nil {
@@ -450,8 +630,9 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 		if err != nil {
 			return err
 		}
+		deleteTxPendingMinHours := os.Getenv("DELETE_TX_PENDING_MIN_HOURS")
 		var dbTransactions []entities.Transaction
-		err = dbProvider.DB.Where("'index' IS NULL OR trustChainConsensus = 0").Find(&dbTransactions).Error
+		err = dbProvider.DB.Where("'index' > 0 AND trustChainConsensus = 0 AND createTime > DATE_SUB(NOW(), INTERVAL ? HOUR)", deleteTxPendingMinHours).Find(&dbTransactions).Error
 		if err != nil {
 			return err
 		}

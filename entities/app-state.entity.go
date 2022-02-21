@@ -9,6 +9,9 @@ type AppStatesNames string
 const (
 	LastMonitoredTransactionIndex AppStatesNames = "lastMonitoredTransactionIndex"
 	MonitorTransaction AppStatesNames = "monitorTransaction"
+	IsClusterStampInitialized AppStatesNames = "isClusterStampInitialized"
+	UpdateBalances AppStatesNames = "updateBalances"
+	DeleteUnindexedTransactions AppStatesNames = "DeleteUnindexedTransactions"
 )
 
 type AppState struct {
