@@ -128,7 +128,6 @@ func (service *transactionService) monitorSyncStatus() {
 	}
 }
 
-
 func (service *transactionService) monitorSyncStatusIteration() error {
 	defer func() {
 		if r := recover(); r != nil {
@@ -578,7 +577,6 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 	return err
 }
 
-
 func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	iteration := 0
 	for {
@@ -614,7 +612,6 @@ func (service *transactionService) monitorTransactions(maxRetries uint8) {
 		}
 	}
 }
-
 
 func (service *transactionService) monitorTransactionIteration(fullnodeUrl string) error {
 	defer func() {

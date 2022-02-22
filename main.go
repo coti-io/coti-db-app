@@ -121,7 +121,7 @@ func loadClusterStamp() {
 		err = dbprovider.DB.Transaction(func(dbTransaction *gorm.DB) error {
 			addressBalances := []entities.AddressBalance{}
 			recordsToSaveCounter := 0
-			for  {
+			for {
 				line, err := reader.Read()
 				if err != nil {
 					break
@@ -131,13 +131,11 @@ func loadClusterStamp() {
 					return err
 				}
 				clusterStampData := dto.ClusterStampDataRow{
-					Address: line[0],
-					Amount: amount,
+					Address:    line[0],
+					Amount:     amount,
 					CurrencyId: nativeCurrency.ID,
 				}
 				addressBalance := entities.NewAddressBalanceFromClusterStamp(&clusterStampData)
-
-
 
 				addressBalances = append(addressBalances, *addressBalance)
 				recordsToSaveCounter += 1
@@ -149,9 +147,6 @@ func loadClusterStamp() {
 					addressBalances = []entities.AddressBalance{}
 					recordsToSaveCounter = 0
 				}
-
-
-
 
 			}
 			if len(addressBalances) > 0 {
@@ -172,7 +167,6 @@ func loadClusterStamp() {
 		if err != nil {
 			panic(err)
 		}
-
 
 	}
 }

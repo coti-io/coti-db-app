@@ -15,7 +15,7 @@ type AddressBalance struct {
 }
 
 func (AddressBalance) TableName() string {
-	return "addresses_balances"
+	return "address_balances"
 }
 
 func NewAddressBalanceFromClusterStamp(csdr *dto.ClusterStampDataRow) *AddressBalance {
