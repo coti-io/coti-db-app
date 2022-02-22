@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -274,18 +275,18 @@ func (service *transactionService) updateBalancesIteration() error {
 		if err != nil {
 			return err
 		}
-		var addressBalanceDiffMap = make(map[string]float64)
+		var addressBalanceDiffMap = make(map[string]decimal.Decimal)
 		for _, tx := range ffbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
 		}
 		for _, tx := range nfbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
 		}
 		for _, tx := range rbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
 		}
 		for _, tx := range ibts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash] + tx.Amount
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
 		}
 		nativeCurrencyHash := "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01"
 		nativeCurrency := entities.Currency{}
@@ -311,13 +312,16 @@ func (service *transactionService) updateBalancesIteration() error {
 			for i, addressBalance := range dbAddressBalanceRes {
 				if addressBalance.AddressHash == key {
 					exists = true
-					dbAddressBalanceRes[i].Amount += value
+					oldBalance := decimal.NewFromFloat(dbAddressBalanceRes[i].Amount)
+					v, _ := oldBalance.Add(value).Float64()
+					dbAddressBalanceRes[i].Amount = v
 				}
 			}
 			// create record if not exists
 			if !exists {
 				// create a new address balance
-				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(key, value, nativeCurrency.ID))
+				v, _ := value.Float64()
+				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(key, v, nativeCurrency.ID))
 
 			}
 		}
