@@ -295,33 +295,33 @@ func (service *transactionService) updateBalancesIteration() error {
 			return nativeCurrencyError
 		}
 		// get all address balances that exists
-		var addressesHash []interface{}
+		addressHashes := make([]interface{}, 0, len(addressBalanceDiffMap))
 		for key := range addressBalanceDiffMap {
-			addressesHash = append(addressesHash, key)
+			addressHashes = append(addressHashes, key)
 		}
 		var dbAddressBalanceToCreate []entities.AddressBalance
 		var dbAddressBalanceRes []entities.AddressBalance
-		err = dbTransaction.Where("addressHash IN (?"+strings.Repeat(",?", len(addressesHash)-1)+")", addressesHash...).Find(&dbAddressBalanceRes).Error
+		err = dbTransaction.Where("addressHash IN (?"+strings.Repeat(",?", len(addressHashes)-1)+")", addressHashes...).Find(&dbAddressBalanceRes).Error
 		if err != nil {
 			return err
 		}
 		// can be improved with map of
 		// update balance if exists
-		for key, value := range addressBalanceDiffMap {
+		for addressHash, balanceDiff := range addressBalanceDiffMap {
 			exists := false
 			for i, addressBalance := range dbAddressBalanceRes {
-				if addressBalance.AddressHash == key {
+				if addressBalance.AddressHash == addressHash {
 					exists = true
-					oldBalance := decimal.NewFromFloat(dbAddressBalanceRes[i].Amount)
-					v, _ := oldBalance.Add(value).Float64()
+					oldBalance := decimal.NewFromFloat(addressBalance.Amount)
+					v, _ := oldBalance.Add(balanceDiff).Float64()
 					dbAddressBalanceRes[i].Amount = v
 				}
 			}
 			// create record if not exists
 			if !exists {
 				// create a new address balance
-				v, _ := value.Float64()
-				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(key, v, nativeCurrency.ID))
+				v, _ := balanceDiff.Float64()
+				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(addressHash, v, nativeCurrency.ID))
 
 			}
 		}
