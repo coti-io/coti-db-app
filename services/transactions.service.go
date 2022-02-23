@@ -631,9 +631,8 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 		if err != nil {
 			return err
 		}
-		deleteTxPendingMinHours := os.Getenv("DELETE_TX_PENDING_MIN_HOURS")
 		var dbTransactions []entities.Transaction
-		err = dbProvider.DB.Where("'index' > 0 AND trustChainConsensus = 0 AND createTime > DATE_SUB(NOW(), INTERVAL ? HOUR)", deleteTxPendingMinHours).Find(&dbTransactions).Error
+		err = dbProvider.DB.Where("`index` > 0 AND transactionConsensusUpdateTime = 0").Find(&dbTransactions).Error
 		if err != nil {
 			return err
 		}
