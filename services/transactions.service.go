@@ -242,7 +242,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		var nfbts []entities.NetworkFeeBaseTransaction
 		var rbts []entities.ReceiverBaseTransaction
 		var ibts []entities.InputBaseTransaction
-		err = dbTransaction.Where("`isProcessed` = 0 AND transactionConsensusUpdateTime > 0 ").Limit(3000).Find(&txs).Error
+		err = dbTransaction.Where("`isProcessed` = 0 AND transactionConsensusUpdateTime > 0 AND type <> 'ZeroSpend'").Limit(3000).Find(&txs).Error
 		if err != nil {
 			return err
 		}
