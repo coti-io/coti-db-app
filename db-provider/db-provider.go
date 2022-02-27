@@ -71,7 +71,8 @@ func migrateDb(dbName string, dbUser string, dbHost string, dbPort string, dbPas
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&entities.AppState{}, &entities.Transaction{}, &entities.FullnodeFeeBaseTransaction{}, &entities.InputBaseTransaction{}, &entities.NetworkFeeBaseTransaction{}, &entities.ReceiverBaseTransaction{})
+	db.AutoMigrate(&entities.AppState{}, &entities.Currency{}, &entities.Transaction{}, &entities.FullnodeFeeBaseTransaction{},
+		&entities.InputBaseTransaction{}, &entities.NetworkFeeBaseTransaction{}, &entities.ReceiverBaseTransaction{}, &entities.AddressBalance{})
 	sqlDB, err := db.DB()
 	if err != nil {
 		panic(err)
