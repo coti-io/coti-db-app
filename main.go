@@ -10,10 +10,10 @@ import (
 	service "github.com/coti-io/coti-db-app/services"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"log"
 	"os"
-	"strconv"
 )
 
 func main() {
@@ -126,7 +126,7 @@ func loadClusterStamp() {
 				if err != nil {
 					break
 				}
-				amount, err := strconv.ParseFloat(line[1], 64)
+				amount, err := decimal.NewFromString(line[1])
 				if err != nil {
 					return err
 				}

@@ -1,42 +1,41 @@
 package dto
 
 import (
-	"database/sql"
+	"github.com/shopspring/decimal"
 )
 
 type TransactionResponse struct {
 	Hash                           string                `json:"hash"`
 	Index                          int32                 `json:"index,omitempty"`
-	Amount                         float64               `json:"amount"`
-	AttachmentTime                 float64               `json:"attachmentTime"`
+	Amount                         decimal.Decimal       `json:"amount"`
+	AttachmentTime                 decimal.NullDecimal   `json:"attachmentTime"`
 	IsValid                        *bool                 `json:"isValid"`
-	CreateTime                     float64               `json:"createTime"`
-	LeftParentHash                 string                `json:"leftParentHash"`
-	RightParentHash                string                `json:"rightParentHash"`
-	SenderHash                     string                `json:"senderHash"`
+	CreateTime                     decimal.Decimal       `json:"createTime"`
+	LeftParentHash                 *string               `json:"leftParentHash"`
+	RightParentHash                *string               `json:"rightParentHash"`
+	SenderHash                     *string               `json:"senderHash"`
 	SenderTrustScore               float64               `json:"senderTrustScore"`
-	TransactionConsensusUpdateTime float64               `json:"transactionConsensusUpdateTime"`
-	TransactionDescription         string                `json:"transactionDescription"`
+	TransactionConsensusUpdateTime decimal.NullDecimal   `json:"transactionConsensusUpdateTime"`
+	TransactionDescription         *string               `json:"transactionDescription"`
 	TrustChainConsensus            bool                  `json:"trustChainConsensus"`
-	TrustChainTrustScore           float64               `json:"trustChainTrustScore"`
-	Type                           string                `json:"type"`
+	TrustChainTrustScore           decimal.NullDecimal   `json:"trustChainTrustScore"`
+	Type                           *string               `json:"type"`
 	BaseTransactionsRes            []BaseTransactionsRes `json:"baseTransactions"`
 }
 
 type BaseTransactionsRes struct {
-	TransactionHash       string         `json:"transactionHash"`
-	AddressHash           string         `json:"addressHash"`
-	Amount                float64        `json:"amount"`
-	FullnodeFeeCreateTime float64        `json:"fullnodeFeeCreateTime"`
-	OriginalAmount        float64        `json:"originalAmount"`
-	Hash                  string         `json:"hash"`
-	Name                  string         `json:"name"`
-	CreateTime            float64        `json:"createTime"`
-	ReducedAmount         float64        `json:"reducedAmount"`
-	ReceiverCreateTime    float64        `json:"receiverCreateTime"`
-	ReceiverDescription   sql.NullString `json:"receiverDescription"`
-	CurrencyHash          sql.NullString `json:"currencyHash"`
-	OriginalCurrencyHash  sql.NullString `json:"originalCurrencyHash"`
+	TransactionHash       string              `json:"transactionHash"`
+	AddressHash           string              `json:"addressHash"`
+	Amount                decimal.Decimal     `json:"amount"`
+	FullnodeFeeCreateTime float64             `json:"fullnodeFeeCreateTime"`
+	OriginalAmount        decimal.NullDecimal `json:"originalAmount"`
+	Hash                  string              `json:"hash"`
+	Name                  string              `json:"name"`
+	CreateTime            decimal.Decimal     `json:"createTime"`
+	ReducedAmount         decimal.Decimal     `json:"reducedAmount"`
+	ReceiverDescription   *string             `json:"receiverDescription"`
+	CurrencyHash          *string             `json:"currencyHash"`
+	OriginalCurrencyHash  *string             `json:"originalCurrencyHash"`
 }
 
 type TransactionsLastIndex struct {

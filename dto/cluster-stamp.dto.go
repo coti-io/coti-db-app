@@ -1,7 +1,9 @@
 package dto
 
+import "github.com/shopspring/decimal"
+
 type ClusterStampDataRow struct {
 	Address    string
-	Amount     float64
+	Amount     decimal.Decimal
 	CurrencyId int32
 }

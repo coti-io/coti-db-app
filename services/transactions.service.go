@@ -277,16 +277,16 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		var addressBalanceDiffMap = make(map[string]decimal.Decimal)
 		for _, tx := range ffbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
 		}
 		for _, tx := range nfbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
 		}
 		for _, tx := range rbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
 		}
 		for _, tx := range ibts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(decimal.NewFromFloat(tx.Amount))
+			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
 		}
 		nativeCurrencyHash := "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01"
 		nativeCurrency := entities.Currency{}
@@ -312,16 +312,14 @@ func (service *transactionService) updateBalancesIteration() error {
 			for i, addressBalance := range dbAddressBalanceRes {
 				if addressBalance.AddressHash == addressHash {
 					exists = true
-					oldBalance := decimal.NewFromFloat(addressBalance.Amount)
-					v, _ := oldBalance.Add(balanceDiff).Float64()
-					dbAddressBalanceRes[i].Amount = v
+					oldBalance := addressBalance.Amount
+					dbAddressBalanceRes[i].Amount = oldBalance.Add(balanceDiff)
 				}
 			}
 			// create record if not exists
 			if !exists {
 				// create a new address balance
-				v, _ := balanceDiff.Float64()
-				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(addressHash, v, nativeCurrency.ID))
+				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(addressHash, balanceDiff, nativeCurrency.ID))
 
 			}
 		}
