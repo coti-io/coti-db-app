@@ -15,7 +15,7 @@ type FullnodeFeeBaseTransaction struct {
 	Name                  string              `json:"name" gorm:"column:name;type:varchar(45) COLLATE utf8_unicode_ci NOT NULL DEFAULT ''"`
 	Amount                decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
 	CurrencyHash          *string             `json:"currencyHash" gorm:"column:currencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
-	FullnodeFeeCreateTime decimal.Decimal     `json:"fullnodeFeeCreateTime" gorm:"column:fullnodeFeeCreateTime;type:decimal(20,10) NOT NULL"`
+	FullnodeFeeCreateTime decimal.Decimal     `json:"fullnodeFeeCreateTime" gorm:"column:fullnodeFeeCreateTime;type:decimal(20,6) NOT NULL"`
 	OriginalAmount        decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(20,10)"`
 	OriginalCurrencyHash  *string             `json:"originalCurrencyHash" gorm:"column:originalCurrencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CreateTime            time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`

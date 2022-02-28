@@ -8,7 +8,7 @@ type TransactionResponse struct {
 	Hash                           string                `json:"hash"`
 	Index                          int32                 `json:"index,omitempty"`
 	Amount                         decimal.Decimal       `json:"amount"`
-	AttachmentTime                 decimal.NullDecimal   `json:"attachmentTime"`
+	AttachmentTime                 decimal.Decimal       `json:"attachmentTime"`
 	IsValid                        *bool                 `json:"isValid"`
 	CreateTime                     decimal.Decimal       `json:"createTime"`
 	LeftParentHash                 *string               `json:"leftParentHash"`
@@ -18,7 +18,7 @@ type TransactionResponse struct {
 	TransactionConsensusUpdateTime decimal.NullDecimal   `json:"transactionConsensusUpdateTime"`
 	TransactionDescription         *string               `json:"transactionDescription"`
 	TrustChainConsensus            bool                  `json:"trustChainConsensus"`
-	TrustChainTrustScore           decimal.NullDecimal   `json:"trustChainTrustScore"`
+	TrustChainTrustScore           decimal.Decimal       `json:"trustChainTrustScore"`
 	Type                           *string               `json:"type"`
 	BaseTransactionsRes            []BaseTransactionsRes `json:"baseTransactions"`
 }

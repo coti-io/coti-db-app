@@ -19,11 +19,11 @@ func (AddressBalance) TableName() string {
 	return "address_balances"
 }
 
-func NewAddressBalanceFromClusterStamp(csdr *dto.ClusterStampDataRow) *AddressBalance {
+func NewAddressBalanceFromClusterStamp(clusterStampDataRow *dto.ClusterStampDataRow) *AddressBalance {
 	instance := new(AddressBalance)
-	instance.AddressHash = csdr.Address
-	instance.Amount = csdr.Amount
-	instance.CurrencyId = csdr.CurrencyId
+	instance.AddressHash = clusterStampDataRow.Address
+	instance.Amount = clusterStampDataRow.Amount
+	instance.CurrencyId = clusterStampDataRow.CurrencyId
 
 	return instance
 }

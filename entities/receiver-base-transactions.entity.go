@@ -15,8 +15,8 @@ type ReceiverBaseTransaction struct {
 	AddressHash          string              `json:"addressHash" gorm:"column:addressHash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
 	Amount               decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
 	CurrencyHash         *string             `json:"currencyHash" gorm:"column:currencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
-	ReceiverCreateTime   decimal.Decimal     `json:"receiverCreateTime" gorm:"column:receiverCreateTime;type:decimal(20,10) NOT NULL"`
-	OriginalAmount       decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(20,10)"`
+	ReceiverCreateTime   decimal.Decimal     `json:"receiverCreateTime" gorm:"column:receiverCreateTime;type:decimal(20,6) NOT NULL"`
+	OriginalAmount       decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(20,10) NOT NULL"`
 	OriginalCurrencyHash *string             `json:"originalCurrencyHash" gorm:"column:originalCurrencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	ReceiverDescription  *string             `json:"receiverDescription" gorm:"column:receiverDescription;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CreateTime           time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
