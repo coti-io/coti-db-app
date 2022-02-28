@@ -4,4 +4,4 @@ test/
 .env
 .idea
 server
-cluster_stamp.csv
+cluster_stamp*

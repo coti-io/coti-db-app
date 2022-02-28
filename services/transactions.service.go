@@ -514,17 +514,17 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 			largestIndex := 0
 			for _, tx := range transactions {
 				exists := false
-				for _, dbTx := range dbTransactionsRes {
+				for i, dbTx := range dbTransactionsRes {
 					if dbTx.Hash == tx.Hash && dbTx.Index == 0 {
 						exists = true
 						if tx.TransactionConsensusUpdateTime != dbTx.TransactionConsensusUpdateTime {
-							dbTx.TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
+							dbTransactionsRes[i].TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
 						}
 						if tx.TrustChainConsensus != dbTx.TrustChainConsensus {
-							dbTx.TrustChainConsensus = tx.TrustChainConsensus
+							dbTransactionsRes[i].TrustChainConsensus = tx.TrustChainConsensus
 						}
 						if tx.Index != dbTx.Index {
-							dbTx.Index = tx.Index
+							dbTransactionsRes[i].Index = tx.Index
 						}
 					}
 				}
