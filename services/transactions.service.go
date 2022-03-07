@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	dbProvider "github.com/coti-io/coti-db-app/db-provider"
@@ -22,8 +21,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-var once sync.Once
 
 type BaseTransactionName string
 
@@ -59,6 +56,21 @@ type transactionService struct {
 type txBuilder struct {
 	Tx   dto.TransactionResponse
 	DbTx *entities.Transaction
+}
+
+type tokenGenerationServiceDataBuilder struct {
+	ServiceDataRes *dto.TokenGenerationServiceDataRes
+	DbBaseTx       *entities.TokenGenerationFeeBaseTransaction
+}
+
+type tokenMintingServiceDataBuilder struct {
+	ServiceDataRes *dto.TokenMintingServiceDataRes
+	DbBaseTx       *entities.TokenMintingFeeBaseTransaction
+}
+
+type tokenGenerationCurrencyBuilder struct {
+	ServiceDataRes *dto.TokenGenerationServiceDataRes
+	DbServiceData  *entities.TokenGenerationFeeServiceData
 }
 
 var instance *transactionService
@@ -100,11 +112,11 @@ func (service *transactionService) RunSync() {
 	}
 	service.isSyncRunning = true
 	// run sync tasks
-	go service.monitorSyncStatus()
+	//go service.monitorSyncStatus()
 	go service.syncNewTransactions(2)
-	go service.monitorTransactions(2)
-	go service.cleanUnindexedTransaction()
-	go service.updateBalances()
+	//go service.monitorTransactions(2)
+	//go service.cleanUnindexedTransaction()
+	//go service.updateBalances()
 
 }
 
@@ -235,13 +247,17 @@ func (service *transactionService) updateBalancesIteration() error {
 		if err != nil {
 			return err
 		}
-		// get all transaction with consensus and not processed
-		// get all indexed transaction or with status attached to dag from db
+
 		var txs []entities.Transaction
 		var ffbts []entities.FullnodeFeeBaseTransaction
 		var nfbts []entities.NetworkFeeBaseTransaction
 		var rbts []entities.ReceiverBaseTransaction
 		var ibts []entities.InputBaseTransaction
+		var tmbts []entities.TokenMintingFeeBaseTransaction
+		var tgbts []entities.TokenGenerationFeeBaseTransaction
+		var eibts []entities.EventInputBaseTransaction
+		// get all transaction with consensus and not processed
+		// get all indexed transaction or with status attached to dag from db
 		err = dbTransaction.Where("`isProcessed` = 0 AND transactionConsensusUpdateTime > 0 AND type <> 'ZeroSpend'").Limit(3000).Find(&txs).Error
 		if err != nil {
 			return err
@@ -271,58 +287,129 @@ func (service *transactionService) updateBalancesIteration() error {
 		if err != nil {
 			return err
 		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&eibts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&tmbts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&tgbts).Error
+		if err != nil {
+			return err
+		}
 		err = dbTransaction.Save(&txs).Error
 		if err != nil {
 			return err
 		}
+
+		// TODO: get tgbt service data and build currency if not exist
+
+		uniqueHelperMap := make(map[string]bool)
+		currencyHashUniqueArray := make([]string, 1)
+		add := func(uniqueHelperMap map[string]bool, uniqueArrayOfStrings []string, s string) {
+			if uniqueHelperMap[s] {
+				return
+			}
+			uniqueArrayOfStrings = append(uniqueArrayOfStrings, s)
+			uniqueHelperMap[s] = true
+		}
+
+		// array of currencies to save
+		// get token generation data and symbol
+
+		var currencyServiceInstance = NewCurrencyService()
 		var addressBalanceDiffMap = make(map[string]decimal.Decimal)
+		for _, tx := range tgbts {
+			// calculate hash and add a currency
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			// create a new currency
+			// get the service data
+			// genereate currency object
+			// save it
+		}
 		for _, tx := range ffbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range nfbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range rbts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range ibts {
-			addressBalanceDiffMap[tx.AddressHash] = addressBalanceDiffMap[tx.AddressHash].Add(tx.Amount)
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
-		nativeCurrencyHash := "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01"
-		nativeCurrency := entities.Currency{}
-		nativeCurrencyError := dbTransaction.Where("hash = ?", nativeCurrencyHash).First(&nativeCurrency).Error
-		if nativeCurrencyError != nil {
-			return nativeCurrencyError
+		for _, tx := range eibts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
+		for _, tx := range tmbts {
+			// TODO: add the token to the new balance
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			key := btTokenBalance.toString()
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+		}
+
 		// get all address balances that exists
 		addressHashes := make([]interface{}, 0, len(addressBalanceDiffMap))
 		for key := range addressBalanceDiffMap {
 			addressHashes = append(addressHashes, key)
 		}
+		// get all currency that have currency hash
 		var dbAddressBalanceToCreate []entities.AddressBalance
 		var dbAddressBalanceRes []entities.AddressBalance
-		err = dbTransaction.Where("addressHash IN (?"+strings.Repeat(",?", len(addressHashes)-1)+")", addressHashes...).Find(&dbAddressBalanceRes).Error
+		err = dbTransaction.Where("identifier IN (?"+strings.Repeat(",?", len(addressHashes)-1)+")", addressHashes...).Select("*, CONCAT(addressHash, '_', currencyHash) as identifier ").Find(&dbAddressBalanceRes).Error
 		if err != nil {
 			return err
 		}
 		// can be improved with map of
 		// update balance if exists
-		for addressHash, balanceDiff := range addressBalanceDiffMap {
-			exists := false
-			for i, addressBalance := range dbAddressBalanceRes {
-				if addressBalance.AddressHash == addressHash {
-					exists = true
-					oldBalance := addressBalance.Amount
-					dbAddressBalanceRes[i].Amount = oldBalance.Add(balanceDiff)
-				}
-			}
-			// create record if not exists
-			if !exists {
-				// create a new address balance
-				dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(addressHash, balanceDiff, nativeCurrency.ID))
 
-			}
-		}
+		// TODO: uncomment
+		//for identifier, balanceDiff := range addressBalanceDiffMap {
+		//	exists := false
+		//	curTokenBalance := newTokenBalanceFromString(identifier)
+		//	for i, addressBalance := range dbAddressBalanceRes {
+		//		if addressBalance.AddressHash == curTokenBalance && addressBalance.cur == curTokenBalance {
+		//			exists = true
+		//			oldBalance := addressBalance.Amount
+		//			dbAddressBalanceRes[i].Amount = oldBalance.Add(balanceDiff)
+		//		}
+		//	}
+		//	// create record if not exists
+		//	if !exists {
+		//		// create a new address balance
+		//		dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(addressHash, balanceDiff, nativeCurrency.ID))
+		//
+		//	}
+		//}
 		if len(dbAddressBalanceToCreate) > 0 {
 			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&dbAddressBalanceToCreate).Error; err != nil {
 				return err
@@ -371,6 +458,10 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 		var nfbts []entities.NetworkFeeBaseTransaction
 		var rbts []entities.ReceiverBaseTransaction
 		var ibts []entities.InputBaseTransaction
+		var eibts []entities.EventInputBaseTransaction
+		var tgbt []entities.TokenGenerationFeeBaseTransaction
+		var tmbt []entities.TokenMintingFeeBaseTransaction
+
 		err = dbTransaction.Where("`index` = 0 AND transactionConsensusUpdateTime IS NULL AND createTime < DATE_SUB(NOW(), INTERVAL ? HOUR)", deleteTxPendingMinHours).Find(&txs).Error
 		if err != nil {
 			return err
@@ -383,6 +474,69 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 		for _, v := range txs {
 			transactionIds = append(transactionIds, v.ID)
 		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&tmbt).Error
+		if err != nil {
+			return err
+		}
+		if len(tmbt) > 0 {
+			// get base transactions ids
+			var tmbtBaseTransactionIds []int32
+			for _, v := range tmbt {
+				tmbtBaseTransactionIds = append(tmbtBaseTransactionIds, v.ID)
+			}
+			// delete the service data
+			var tmbtsd []entities.TokenMintingFeeServiceData
+			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tmbtBaseTransactionIds}).Delete(&tmbtsd).Error
+			if err != nil {
+				return err
+			}
+			err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&tmbt).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Find(&tgbt).Error
+		if err != nil {
+			return err
+		}
+		if len(tgbt) > 0 {
+			// get base transactions ids
+			var tgbtBaseTransactionIds []int32
+			for _, v := range tmbt {
+				tgbtBaseTransactionIds = append(tgbtBaseTransactionIds, v.ID)
+			}
+			// find the service data
+			var tgbtsd []entities.TokenGenerationFeeServiceData
+			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Find(&tgbtsd).Error
+			if err != nil {
+				return err
+			}
+			// get base transactions ids
+			var serviceDataIds []int32
+			for _, v := range tmbt {
+				serviceDataIds = append(serviceDataIds, v.ID)
+			}
+			var ocd []entities.OriginatorCurrencyData
+			var ctd []entities.CurrencyTypeData
+			err = dbTransaction.Where(map[string]interface{}{"transactionId": serviceDataIds}).Delete(&ocd).Error
+			if err != nil {
+				return err
+			}
+			err = dbTransaction.Where(map[string]interface{}{"transactionId": serviceDataIds}).Delete(&ctd).Error
+			if err != nil {
+				return err
+			}
+			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Delete(&tgbtsd).Error
+			if err != nil {
+				return err
+			}
+			err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&tgbt).Error
+			if err != nil {
+				return err
+			}
+		}
+
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&ffbts).Error
 		if err != nil {
 			return err
@@ -396,6 +550,10 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 			return err
 		}
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&ibts).Error
+		if err != nil {
+			return err
+		}
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&eibts).Error
 		if err != nil {
 			return err
 		}
@@ -496,7 +654,10 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 		if startingIndex > endingIndex {
 			includeIndexed = false
 		}
-		transactions := service.getTransactions(startingIndex, endingIndex, includeIndexed, *includeUnindexed, fullnodeUrl)
+		err, transactions := service.getTransactions(startingIndex, endingIndex, includeIndexed, *includeUnindexed, fullnodeUrl)
+		if err != nil {
+			return err
+		}
 		if len(transactions) > 0 {
 			// get all the transactions hash
 			var txHashArray []interface{}
@@ -526,6 +687,9 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 						if tx.Index != dbTx.Index {
 							dbTransactionsRes[i].Index = tx.Index
 						}
+						if tx.TrustChainTrustScore != dbTx.TrustChainTrustScore {
+							dbTransactionsRes[i].TrustChainTrustScore = tx.TrustChainTrustScore
+						}
 					}
 				}
 				if largestIndex < int(tx.Index) {
@@ -544,22 +708,22 @@ func (service *transactionService) syncTransactionsIteration(maxTransactionsInSy
 			if len(newTransactions) > 0 {
 
 				// prepare all the transactions to be saved
-				var baseTransactionsToBeSaved []*entities.Transaction
-				m := map[string]txBuilder{}
+				var entitiesToBeSaved []*entities.Transaction
+				txHashToTxBuilderMap := map[string]txBuilder{}
 				for _, tx := range newTransactions {
 					dbTx := entities.NewTransaction(&tx)
-					baseTransactionsToBeSaved = append(baseTransactionsToBeSaved, dbTx)
-					m[dbTx.Hash] = txBuilder{tx, dbTx}
+					entitiesToBeSaved = append(entitiesToBeSaved, dbTx)
+					txHashToTxBuilderMap[dbTx.Hash] = txBuilder{tx, dbTx}
 				}
 
 				// save all of them
-				if len(baseTransactionsToBeSaved) > 0 {
-					if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&baseTransactionsToBeSaved).Error; err != nil {
+				if len(entitiesToBeSaved) > 0 {
+					if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&entitiesToBeSaved).Error; err != nil {
 						return err
 					}
 				}
 
-				if err := service.insertBaseTransactionsInputsOutputs(m, dbTransaction); err != nil {
+				if err := service.insertBaseTransactionsInputsOutputs(txHashToTxBuilderMap, dbTransaction); err != nil {
 					return err
 				}
 
@@ -663,6 +827,10 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 					isChanged = true
 					txToSave.Index = tx.Index
 				}
+				if tx.TrustChainTrustScore != txToSave.TrustChainTrustScore {
+					isChanged = true
+					txToSave.TrustChainTrustScore = tx.TrustChainTrustScore
+				}
 				if isChanged {
 					transactionToSave = append(transactionToSave, &txToSave)
 				}
@@ -679,7 +847,7 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 	return err
 }
 
-func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeIndexed bool, includeUnindexed bool, fullnodeUrl string) []dto.TransactionResponse {
+func (service *transactionService) getTransactions(startingIndex int64, endingIndex int64, includeIndexed bool, includeUnindexed bool, fullnodeUrl string) (err error, transactionsResponse []dto.TransactionResponse) {
 	var data []dto.TransactionResponse
 
 	if includeIndexed {
@@ -688,27 +856,27 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 		jsonData, err := json.Marshal(values)
 
 		if err != nil {
-			panic(err)
+			return err, nil
 		}
 
 		res, err := http.Post(fullnodeUrl+"/transaction_batch", "application/json",
 			bytes.NewBuffer(jsonData))
 
 		if err != nil {
-			panic(err.Error())
+			return err, nil
 		}
 
 		if isResError(res) {
-			panic(res.Status)
+			return errors.New(res.Status), nil
 		}
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			panic(err.Error())
+			return err, nil
 		}
 		err = json.Unmarshal(body, &data)
 		if err != nil {
-			panic(err.Error())
+			return err, nil
 		}
 	}
 
@@ -717,26 +885,26 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 		res, err := http.Get(fullnodeUrl + "/transaction/none-indexed/batch")
 
 		if err != nil {
-			panic(err)
+			return err, nil
 		}
 
 		if isResError(res) {
-			panic(res.Status)
+			return errors.New(res.Status), nil
 		}
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			panic(err.Error())
+			return err, nil
 		}
 
 		var unindexedData []dto.TransactionResponse
 		err = json.Unmarshal(body, &unindexedData)
 		if err != nil {
-			panic(err.Error())
+			return err, nil
 		}
 		data = append(data, unindexedData...)
 	}
-	return data
+	return nil, data
 }
 
 func (service *transactionService) getTransactionsByHash(hashArray []string, fullnodeUrl string) (txs []dto.TransactionResponse, err error) {
@@ -818,12 +986,20 @@ func (service *transactionService) GetLastIteration() int64 {
 	return service.lastIterationIndex
 }
 
-func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[string]txBuilder, tx *gorm.DB) error {
+func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToTxBuilderMap map[string]txBuilder, tx *gorm.DB) error {
 	var ibtToBeSaved []*entities.InputBaseTransaction
 	var rbtToBeSaved []*entities.ReceiverBaseTransaction
 	var ffbtToBeSaved []*entities.FullnodeFeeBaseTransaction
 	var nfbtToBeSaved []*entities.NetworkFeeBaseTransaction
-	for _, value := range m {
+	var tgbtToBeSaved []*entities.TokenGenerationFeeBaseTransaction
+	var tmbtToBeSaved []*entities.TokenMintingFeeBaseTransaction
+	var eibtToBeSaved []*entities.EventInputBaseTransaction
+
+	var tgCurrencyBuilder []*tokenGenerationCurrencyBuilder
+	var tgbtServiceDataBuilder []*tokenGenerationServiceDataBuilder
+	var tmbtServiceDataBuilder []*tokenMintingServiceDataBuilder
+
+	for _, value := range txHashToTxBuilderMap {
 		txId := value.DbTx.ID
 		for _, baseTransaction := range value.Tx.BaseTransactionsRes {
 			switch baseTransaction.Name {
@@ -839,12 +1015,24 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[str
 			case "NFBT":
 				nfbt := entities.NewNetworkFeeBaseTransaction(&baseTransaction, txId)
 				nfbtToBeSaved = append(nfbtToBeSaved, nfbt)
+			case "TGBT":
+				tgbt := entities.NewTokenGenerationFeeBaseTransaction(&baseTransaction, txId)
+				tgbtToBeSaved = append(tgbtToBeSaved, tgbt)
+				tgbtServiceDataBuilder = append(tgbtServiceDataBuilder, &tokenGenerationServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenGenerationServiceResponseData, DbBaseTx: tgbt})
+			case "TMBT":
+				tmbt := entities.NewTokenMintingFeeBaseTransaction(&baseTransaction, txId)
+				tmbtToBeSaved = append(tmbtToBeSaved, tmbt)
+				tmbtServiceDataBuilder = append(tmbtServiceDataBuilder, &tokenMintingServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenMintingServiceResponseData, DbBaseTx: tmbt})
+			case "EIBT":
+				eibt := entities.NewEventInputBaseTransaction(&baseTransaction, txId)
+				eibtToBeSaved = append(eibtToBeSaved, eibt)
 			default:
 				fmt.Println("Unknown base transaction name: ", baseTransaction.Name)
 			}
 		}
 
 	}
+
 	if len(ibtToBeSaved) > 0 {
 		if err := tx.Omit("CreateTime", "UpdateTime").Create(&ibtToBeSaved).Error; err != nil {
 			log.Println(err)
@@ -866,6 +1054,66 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(m map[str
 	}
 	if len(nfbtToBeSaved) > 0 {
 		if err := tx.Omit("CreateTime", "UpdateTime").Create(&nfbtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	if len(eibtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&eibtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	if len(tgbtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tgbtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
+		var tgbtServiceDataToBeSaved []*entities.TokenGenerationFeeServiceData
+		for _, tgbtBuilder := range tgbtServiceDataBuilder {
+			dbServiceData := entities.NewTokenGenerationFeeServiceData(tgbtBuilder.ServiceDataRes, tgbtBuilder.DbBaseTx.ID)
+			tgbtServiceDataToBeSaved = append(tgbtServiceDataToBeSaved, dbServiceData)
+			tgCurrencyBuilder = append(tgCurrencyBuilder, &tokenGenerationCurrencyBuilder{ServiceDataRes: tgbtBuilder.ServiceDataRes, DbServiceData: dbServiceData})
+
+		}
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tgbtServiceDataToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
+		if len(tgCurrencyBuilder) > 0 {
+			var originatorCurrencyDataToBeSaved []*entities.OriginatorCurrencyData
+			var currencyTypeDataToBeSaved []*entities.CurrencyTypeData
+			for _, currencyBuilder := range tgCurrencyBuilder {
+				currencyTypeDataToBeSaved = append(currencyTypeDataToBeSaved, entities.NewCurrencyTypeData(&currencyBuilder.ServiceDataRes.CurrencyTypeData, currencyBuilder.DbServiceData.ID))
+				originatorCurrencyDataToBeSaved = append(originatorCurrencyDataToBeSaved, entities.NewOriginatorCurrencyData(&currencyBuilder.ServiceDataRes.OriginatorCurrencyData, currencyBuilder.DbServiceData.ID))
+			}
+			if len(currencyTypeDataToBeSaved) > 0 {
+				if err := tx.Omit("CreateTime", "UpdateTime").Create(&currencyTypeDataToBeSaved).Error; err != nil {
+					log.Println(err)
+					return err
+				}
+			}
+
+			if len(originatorCurrencyDataToBeSaved) > 0 {
+				if err := tx.Omit("CreateTime", "UpdateTime").Create(&originatorCurrencyDataToBeSaved).Error; err != nil {
+					log.Println(err)
+					return err
+				}
+			}
+
+		}
+	}
+	if len(tmbtToBeSaved) > 0 {
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tmbtToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
+		var tmbtServiceDataToBeSaved []*entities.TokenMintingFeeServiceData
+		for _, tmbtBuilder := range tmbtServiceDataBuilder {
+			dbServiceData := entities.NewTokenMintingFeeServiceData(tmbtBuilder.ServiceDataRes, tmbtBuilder.DbBaseTx.ID)
+			tmbtServiceDataToBeSaved = append(tmbtServiceDataToBeSaved, dbServiceData)
+		}
+		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tmbtServiceDataToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}

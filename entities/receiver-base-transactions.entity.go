@@ -23,17 +23,17 @@ type ReceiverBaseTransaction struct {
 	UpdateTime           time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func NewReceiverBaseTransaction(tx *dto.BaseTransactionsRes, transactionId int32) *ReceiverBaseTransaction {
+func NewReceiverBaseTransaction(btx *dto.BaseTransactionsRes, transactionId int32) *ReceiverBaseTransaction {
 	instance := new(ReceiverBaseTransaction)
 	instance.TransactionId = transactionId
-	instance.Hash = tx.Hash
-	instance.Name = tx.Name
-	instance.AddressHash = tx.AddressHash
-	instance.Amount = tx.Amount
-	instance.ReceiverCreateTime = tx.CreateTime // time.Unix(int64(tx.ReceiverCreateTime), 0)
-	instance.OriginalAmount = tx.OriginalAmount
-	instance.ReceiverDescription = tx.ReceiverDescription
-	instance.CurrencyHash = tx.CurrencyHash
-	instance.OriginalCurrencyHash = tx.OriginalCurrencyHash
+	instance.Hash = btx.Hash
+	instance.Name = btx.Name
+	instance.AddressHash = btx.AddressHash
+	instance.Amount = btx.Amount
+	instance.ReceiverCreateTime = btx.CreateTime // time.Unix(int64(tx.ReceiverCreateTime), 0)
+	instance.OriginalAmount = btx.OriginalAmount
+	instance.ReceiverDescription = btx.ReceiverDescription
+	instance.CurrencyHash = btx.CurrencyHash
+	instance.OriginalCurrencyHash = btx.OriginalCurrencyHash
 	return instance
 }

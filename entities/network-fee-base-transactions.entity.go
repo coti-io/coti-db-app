@@ -23,17 +23,17 @@ type NetworkFeeBaseTransaction struct {
 	UpdateTime           time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func NewNetworkFeeBaseTransaction(tx *dto.BaseTransactionsRes, transactionId int32) *NetworkFeeBaseTransaction {
+func NewNetworkFeeBaseTransaction(btx *dto.BaseTransactionsRes, transactionId int32) *NetworkFeeBaseTransaction {
 	instance := new(NetworkFeeBaseTransaction)
 	instance.TransactionId = transactionId
-	instance.Hash = tx.Hash
-	instance.Name = tx.Name
-	instance.AddressHash = tx.AddressHash
-	instance.Amount = tx.Amount
-	instance.NetworkFeeCreateTime = tx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
-	instance.OriginalAmount = tx.OriginalAmount
-	instance.ReducedAmount = tx.ReducedAmount
-	instance.CurrencyHash = tx.CurrencyHash
-	instance.OriginalCurrencyHash = tx.OriginalCurrencyHash
+	instance.Hash = btx.Hash
+	instance.Name = btx.Name
+	instance.AddressHash = btx.AddressHash
+	instance.Amount = btx.Amount
+	instance.NetworkFeeCreateTime = btx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
+	instance.OriginalAmount = btx.OriginalAmount
+	instance.ReducedAmount = btx.ReducedAmount
+	instance.CurrencyHash = btx.CurrencyHash
+	instance.OriginalCurrencyHash = btx.OriginalCurrencyHash
 	return instance
 }
