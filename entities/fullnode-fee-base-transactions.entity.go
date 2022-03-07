@@ -22,15 +22,15 @@ type FullnodeFeeBaseTransaction struct {
 	UpdateTime            time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func NewFullnodeFeeBaseTransaction(tx *dto.BaseTransactionsRes, transactionId int32) *FullnodeFeeBaseTransaction {
+func NewFullnodeFeeBaseTransaction(btx *dto.BaseTransactionsRes, transactionId int32) *FullnodeFeeBaseTransaction {
 	instance := new(FullnodeFeeBaseTransaction)
 	instance.TransactionId = transactionId
-	instance.Hash = tx.Hash
-	instance.Name = tx.Name
-	instance.AddressHash = tx.AddressHash
-	instance.Amount = tx.Amount
-	instance.FullnodeFeeCreateTime = tx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
-	instance.OriginalAmount = tx.OriginalAmount
-	instance.OriginalCurrencyHash = tx.OriginalCurrencyHash
+	instance.Hash = btx.Hash
+	instance.Name = btx.Name
+	instance.AddressHash = btx.AddressHash
+	instance.Amount = btx.Amount
+	instance.FullnodeFeeCreateTime = btx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
+	instance.OriginalAmount = btx.OriginalAmount
+	instance.OriginalCurrencyHash = btx.OriginalCurrencyHash
 	return instance
 }

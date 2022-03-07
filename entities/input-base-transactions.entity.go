@@ -20,14 +20,14 @@ type InputBaseTransaction struct {
 	UpdateTime      time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func NewInputBaseTransaction(tx *dto.BaseTransactionsRes, transactionId int32) *InputBaseTransaction {
+func NewInputBaseTransaction(btx *dto.BaseTransactionsRes, transactionId int32) *InputBaseTransaction {
 	instance := new(InputBaseTransaction)
 	instance.TransactionId = transactionId
-	instance.Hash = tx.Hash
-	instance.Name = tx.Name
-	instance.AddressHash = tx.AddressHash
-	instance.Amount = tx.Amount
-	instance.InputCreateTime = tx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
-	instance.CurrencyHash = tx.CurrencyHash
+	instance.Hash = btx.Hash
+	instance.Name = btx.Name
+	instance.AddressHash = btx.AddressHash
+	instance.Amount = btx.Amount
+	instance.InputCreateTime = btx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
+	instance.CurrencyHash = btx.CurrencyHash
 	return instance
 }
