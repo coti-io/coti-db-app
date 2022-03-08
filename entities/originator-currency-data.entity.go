@@ -11,7 +11,7 @@ type OriginatorCurrencyData struct {
 	ID             int32           `json:"id" gorm:"column:id;type:int(11) NOT NULL AUTO_INCREMENT"`
 	ServiceDataId  int32           `json:"serviceDataId" gorm:"column:serviceDataId;type:int(11) NOT NULL;index:transactionId_INDEX"`
 	Name           *string         `json:"name" gorm:"column:name;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
-	Symbol         *string         `json:"symbol" gorm:"column:symbol;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
+	Symbol         string          `json:"symbol" gorm:"column:symbol;type:varchar(200) COLLATE utf8_unicode_ci"`
 	Description    *string         `json:"description" gorm:"column:description;type:varchar(500) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	OriginatorHash *string         `json:"originatorHash" gorm:"column:originatorHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	TotalSupply    decimal.Decimal `json:"totalSupply" gorm:"column:totalSupply;type:decimal(20,10) NOT NULL"`
