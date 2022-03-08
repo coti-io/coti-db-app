@@ -19,7 +19,7 @@ type Transaction struct {
 	RightParentHash                *string             `json:"rightParentHash" gorm:"column:rightParentHash;type:varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SenderHash                     *string             `json:"senderHash" gorm:"column:senderHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SenderTrustScore               float64             `json:"senderTrustScore" gorm:"column:senderTrustScore;type:decimal(20,10) NOT NULL"`
-	TransactionConsensusUpdateTime decimal.NullDecimal `json:"transactionConsensusUpdateTime" gorm:"column:transactionConsensusUpdateTime;type:decimal(20,6) NOT NULL"`
+	TransactionConsensusUpdateTime decimal.NullDecimal `json:"transactionConsensusUpdateTime" gorm:"column:transactionConsensusUpdateTime;type:decimal(20,6)"`
 	TransactionDescription         *string             `json:"transactionDescription" gorm:"column:transactionDescription;type:varchar(500) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	TrustChainConsensus            bool                `json:"trustChainConsensus" gorm:"column:trustChainConsensus;type:tinyint(4) DEFAULT NULL"`
 	TrustChainTrustScore           decimal.Decimal     `json:"trustChainTrustScore" gorm:"column:trustChainTrustScore;type:decimal(20,10) NOT NULL"`
