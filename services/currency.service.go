@@ -3,8 +3,9 @@ package service
 import (
 	"encoding/hex"
 	"github.com/ebfe/keccak"
+	"sync"
 )
-
+var currencyOnce sync.Once
 type CurrencyService interface {
 	// The exported functions
 	getCurrencyHashBySymbol(symbol string) (error error, currencyHash string)
@@ -17,9 +18,8 @@ type currencyService struct {
 
 var currencyServiceInstance *currencyService
 
-// NewTransactionService we made this one a singleton because it has a state
 func NewCurrencyService() CurrencyService {
-	once.Do(func() {
+	currencyOnce.Do(func() {
 		currencyServiceInstance = &currencyService{
 			nativeCurrencyHash: "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01",
 		}

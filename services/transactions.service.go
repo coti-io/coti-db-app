@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	dbProvider "github.com/coti-io/coti-db-app/db-provider"
@@ -21,6 +22,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var transactionOnce sync.Once
 
 type BaseTransactionName string
 
@@ -53,6 +56,10 @@ type transactionService struct {
 	serviceUpTime      time.Time
 }
 
+type UpdateBalanceRes struct {
+	Id         int32
+	Identifier string
+}
 type txBuilder struct {
 	Tx   dto.TransactionResponse
 	DbTx *entities.Transaction
@@ -77,7 +84,7 @@ var instance *transactionService
 
 // NewTransactionService we made this one a singleton because it has a state
 func NewTransactionService() TransactionService {
-	once.Do(func() {
+	transactionOnce.Do(func() {
 
 		instance = &transactionService{
 			fullnodeUrl:        os.Getenv("FULLNODE_URL"),
@@ -112,11 +119,11 @@ func (service *transactionService) RunSync() {
 	}
 	service.isSyncRunning = true
 	// run sync tasks
-	//go service.monitorSyncStatus()
+	go service.monitorSyncStatus()
 	go service.syncNewTransactions(2)
-	//go service.monitorTransactions(2)
-	//go service.cleanUnindexedTransaction()
-	//go service.updateBalances()
+	go service.monitorTransactions(2)
+	go service.cleanUnindexedTransaction()
+	go service.updateBalances()
 
 }
 
@@ -256,6 +263,8 @@ func (service *transactionService) updateBalancesIteration() error {
 		var tmbts []entities.TokenMintingFeeBaseTransaction
 		var tgbts []entities.TokenGenerationFeeBaseTransaction
 		var eibts []entities.EventInputBaseTransaction
+		var tmbtServiceData []entities.TokenMintingFeeServiceData
+		var currencies []entities.Currency
 		// get all transaction with consensus and not processed
 		// get all indexed transaction or with status attached to dag from db
 		err = dbTransaction.Where("`isProcessed` = 0 AND transactionConsensusUpdateTime > 0 AND type <> 'ZeroSpend'").Limit(3000).Find(&txs).Error
@@ -303,18 +312,17 @@ func (service *transactionService) updateBalancesIteration() error {
 		if err != nil {
 			return err
 		}
-
-		// TODO: get tgbt service data and build currency if not exist
+		var tmbtIds []int32
+		for _, v := range tmbts {
+			tmbtIds = append(tmbtIds, v.ID)
+		}
+		err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tmbtIds}).Find(&tmbtServiceData).Error
+		if err != nil {
+			return err
+		}
 
 		uniqueHelperMap := make(map[string]bool)
 		currencyHashUniqueArray := make([]string, 1)
-		add := func(uniqueHelperMap map[string]bool, uniqueArrayOfStrings []string, s string) {
-			if uniqueHelperMap[s] {
-				return
-			}
-			uniqueArrayOfStrings = append(uniqueArrayOfStrings, s)
-			uniqueHelperMap[s] = true
-		}
 
 		// array of currencies to save
 		// get token generation data and symbol
@@ -324,57 +332,100 @@ func (service *transactionService) updateBalancesIteration() error {
 		for _, tx := range tgbts {
 			// calculate hash and add a currency
 			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 			// create a new currency
 			// get the service data
-			// genereate currency object
-			// save it
+			tgbtServiceData := entities.TokenGenerationFeeServiceData{}
+			err = dbTransaction.Where("baseTransactionId = ?", tx.ID).First(&tgbtServiceData).Error
+			if err != nil {
+				return err
+			}
+			// get originator currency data
+			originatorCurrencyData := entities.OriginatorCurrencyData{}
+			err = dbTransaction.Where("serviceDataId = ?", tgbtServiceData.ID).First(&originatorCurrencyData).Error
+			if err != nil {
+				return err
+			}
+
+			err, newCurrencyHash := currencyServiceInstance.getCurrencyHashBySymbol(originatorCurrencyData.Symbol)
+			if err != nil {
+				return err
+			}
+			currency := entities.Currency{OriginatorCurrencyDataId: originatorCurrencyData.ID, Hash: newCurrencyHash}
+			currencies = append(currencies, currency)
 		}
+		if len(currencies) > 0 {
+			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&currencies).Error; err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+
 		for _, tx := range ffbts {
 			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range nfbts {
 			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range rbts {
 			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range ibts {
 			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range eibts {
 			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
 		}
 		for _, tx := range tmbts {
-			// TODO: add the token to the new balance
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
-			add(uniqueHelperMap, currencyHashUniqueArray, currencyHash)
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.MintingCurrencyHash)
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+
+		}
+		for _, tx := range tmbtServiceData {
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, tx.MintingCurrencyHash)
+			btTokenBalance := newTokenBalance(tx.MintingCurrencyHash, tx.ReceiverAddress)
+			key := btTokenBalance.toString()
+			fmt.Println(tx.MintingAmount.String())
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.MintingAmount)
+		}
+
+		// get all currency that have currency hash
+		currenciesEntities := make([]entities.Currency, len(currencyHashUniqueArray))
+		err = dbTransaction.Where(map[string]interface{}{"hash": currencyHashUniqueArray}).Find(&currenciesEntities).Error
+		if err != nil {
+			return err
+		}
+		var currencyMapHashToId = make(map[string]int32)
+		if len(currenciesEntities) > 0 {
+			for _, c := range currenciesEntities {
+				currencyMapHashToId[c.Hash] = c.ID
+			}
 		}
 
 		// get all address balances that exists
@@ -382,46 +433,66 @@ func (service *transactionService) updateBalancesIteration() error {
 		for key := range addressBalanceDiffMap {
 			addressHashes = append(addressHashes, key)
 		}
-		// get all currency that have currency hash
-		var dbAddressBalanceToCreate []entities.AddressBalance
-		var dbAddressBalanceRes []entities.AddressBalance
-		err = dbTransaction.Where("identifier IN (?"+strings.Repeat(",?", len(addressHashes)-1)+")", addressHashes...).Select("*, CONCAT(addressHash, '_', currencyHash) as identifier ").Find(&dbAddressBalanceRes).Error
+
+		// handle existing balance to update
+		var updateBalanceResponseArray []UpdateBalanceRes
+
+		err = dbTransaction.Model(&entities.AddressBalance{}).
+			Select("address_balances.id, CONCAT(address_balances.addressHash, '_', currencies.hash) as identifier").
+			Where("CONCAT(address_balances.addressHash, '_', currencies.hash) IN (?"+strings.Repeat(",?", len(addressHashes)-1)+")", addressHashes...).
+			Joins("INNER JOIN currencies on currencies.id = address_balances.currencyId").
+			Find(&updateBalanceResponseArray).Error
 		if err != nil {
 			return err
 		}
-		// can be improved with map of
-		// update balance if exists
 
-		// TODO: uncomment
-		//for identifier, balanceDiff := range addressBalanceDiffMap {
-		//	exists := false
-		//	curTokenBalance := newTokenBalanceFromString(identifier)
-		//	for i, addressBalance := range dbAddressBalanceRes {
-		//		if addressBalance.AddressHash == curTokenBalance && addressBalance.cur == curTokenBalance {
-		//			exists = true
-		//			oldBalance := addressBalance.Amount
-		//			dbAddressBalanceRes[i].Amount = oldBalance.Add(balanceDiff)
-		//		}
-		//	}
-		//	// create record if not exists
-		//	if !exists {
-		//		// create a new address balance
-		//		dbAddressBalanceToCreate = append(dbAddressBalanceToCreate, *entities.NewAddressBalance(addressHash, balanceDiff, nativeCurrency.ID))
-		//
-		//	}
-		//}
-		if len(dbAddressBalanceToCreate) > 0 {
-			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&dbAddressBalanceToCreate).Error; err != nil {
+		if len(updateBalanceResponseArray) > 0 {
+			// get all ids to update
+			var addressBalancesToUpdate []entities.AddressBalance
+			var balanceIdsToUpdate []int32
+			for _, v := range updateBalanceResponseArray {
+				balanceIdsToUpdate = append(balanceIdsToUpdate, v.Id)
+			}
+			err = dbTransaction.Where(map[string]interface{}{"id": balanceIdsToUpdate}).Find(&addressBalancesToUpdate).Error
+			if err != nil {
+				return err
+			}
+			var mapIdToAddressBalance = make(map[int32]entities.AddressBalance)
+			for _, ab := range addressBalancesToUpdate {
+				mapIdToAddressBalance[ab.ID] = ab
+			}
+			var modifiedAddressBalancesToUpdate []entities.AddressBalance
+			for _, adr := range updateBalanceResponseArray {
+				// get balance diff by identifier
+				balanceDiff := addressBalanceDiffMap[adr.Identifier]
+				// get balanceToUpdate by id
+				balanceToUpdate := mapIdToAddressBalance[adr.Id]
+				// update balance
+				balanceToUpdate.Amount = balanceToUpdate.Amount.Add(balanceDiff)
+				modifiedAddressBalancesToUpdate = append(modifiedAddressBalancesToUpdate, balanceToUpdate)
+				// remove from diff map
+				delete(addressBalanceDiffMap, adr.Identifier)
+
+			}
+			if err := dbTransaction.Save(&modifiedAddressBalancesToUpdate).Error; err != nil {
+				return err
+			}
+
+		}
+		var addressBalancesToCreate []entities.AddressBalance
+		for k, balanceDiff := range addressBalanceDiffMap {
+			tb := newTokenBalanceFromString(k)
+			currencyId := currencyMapHashToId[tb.CurrencyHash]
+			// create a new address balance
+			addressBalance := entities.NewAddressBalance(tb.AddressHash, balanceDiff, currencyId)
+			addressBalancesToCreate = append(addressBalancesToCreate, *addressBalance)
+		}
+
+		if len(addressBalancesToCreate) > 0 {
+			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&addressBalancesToCreate).Error; err != nil {
 				return err
 			}
 		}
-
-		if len(dbAddressBalanceRes) > 0 {
-			if err := dbTransaction.Save(&dbAddressBalanceRes).Error; err != nil {
-				return err
-			}
-		}
-
 		return nil
 	})
 	return err

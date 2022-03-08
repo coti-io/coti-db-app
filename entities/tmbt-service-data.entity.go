@@ -9,7 +9,7 @@ import (
 
 type TokenMintingFeeServiceData struct {
 	ID                    int32           `json:"id" gorm:"column:id;type:int(11) NOT NULL AUTO_INCREMENT"`
-	ServiceDataId     int32           `json:"serviceDataId" gorm:"column:serviceDataId;type:int(11) NOT NULL;index:transactionId_INDEX"`
+	BaseTransactionId     int32           `json:"baseTransactionId" gorm:"column:baseTransactionId;type:int(11) NOT NULL;index:transactionId_INDEX"`
 	MintingCurrencyHash   string          `json:"mintingCurrencyHash" gorm:"column:mintingCurrencyHash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
 	MintingAmount         decimal.Decimal `json:"mintingAmount" gorm:"column:mintingAmount;type:decimal(20,10) NOT NULL"`
 	ServiceDataCreateTime decimal.Decimal `json:"serviceDataCreateTime" gorm:"column:serviceDataCreateTime;type:decimal(20,6) NOT NULL"`
@@ -20,9 +20,9 @@ type TokenMintingFeeServiceData struct {
 	UpdateTime            time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func NewTokenMintingFeeServiceData(sd *dto.TokenMintingServiceDataRes, serviceDataId int32) *TokenMintingFeeServiceData {
+func NewTokenMintingFeeServiceData(sd *dto.TokenMintingServiceDataRes, baseTransactionId int32) *TokenMintingFeeServiceData {
 	instance := new(TokenMintingFeeServiceData)
-	instance.ServiceDataId = serviceDataId
+	instance.BaseTransactionId = baseTransactionId
 	instance.MintingCurrencyHash = sd.MintingCurrencyHash
 	instance.MintingAmount = sd.MintingAmount
 	instance.ServiceDataCreateTime = sd.CreateTime
