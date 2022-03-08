@@ -29,10 +29,6 @@ type Transaction struct {
 	UpdateTime                     time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func (Transaction) TableName() string {
-	return "transactions"
-}
-
 func NewTransaction(tx *dto.TransactionResponse) *Transaction {
 	instance := new(Transaction)
 	instance.Hash = tx.Hash

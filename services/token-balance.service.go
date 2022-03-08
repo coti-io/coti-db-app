@@ -15,11 +15,11 @@ func newTokenBalance(currencyHash string, addressHash string) *tokenBalance {
 	return instance
 }
 
-
 func (service *tokenBalance) toString() string {
 	return service.AddressHash + "_" + service.CurrencyHash
 }
-func newTokenBalanceFromString( tokenBalanceString string) *tokenBalance {
+
+func newTokenBalanceFromString(tokenBalanceString string) *tokenBalance {
 	parseResult := strings.Split(tokenBalanceString, "_")
 	instance := &tokenBalance{
 		CurrencyHash: parseResult[1],

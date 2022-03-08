@@ -20,6 +20,10 @@ type TokenMintingFeeServiceData struct {
 	UpdateTime            time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
+func (TokenMintingFeeServiceData) TableName() string {
+	return "token_minting_fee_service_data"
+}
+
 func NewTokenMintingFeeServiceData(sd *dto.TokenMintingServiceDataRes, baseTransactionId int32) *TokenMintingFeeServiceData {
 	instance := new(TokenMintingFeeServiceData)
 	instance.BaseTransactionId = baseTransactionId

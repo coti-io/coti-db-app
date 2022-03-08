@@ -15,10 +15,6 @@ type AddressBalance struct {
 	UpdateTime  time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func (AddressBalance) TableName() string {
-	return "address_balances"
-}
-
 func NewAddressBalanceFromClusterStamp(clusterStampDataRow *dto.ClusterStampDataRow) *AddressBalance {
 	instance := new(AddressBalance)
 	instance.AddressHash = clusterStampDataRow.Address

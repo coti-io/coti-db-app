@@ -9,7 +9,7 @@ import (
 
 type CurrencyTypeData struct {
 	ID                         int32           `json:"id" gorm:"column:id;type:int(11) NOT NULL AUTO_INCREMENT"`
-	ServiceDataId              int32           `json:"serviceDataId" gorm:"column:serviceDataId;type:int(11) NOT NULL;index:transactionId_INDEX"`
+	ServiceDataId              int32           `json:"serviceDataId" gorm:"column:serviceDataId;type:int(11) NOT NULL;index:serviceDataId_INDEX"`
 	CurrencyType               *string         `json:"currencyType" gorm:"column:currencyType;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CurrencyRateSourceType     *string         `json:"currencyRateSourceType" gorm:"column:currencyRateSourceType;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	RateSource                 *string         `json:"rateSource" gorm:"column:rateSource;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`

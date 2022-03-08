@@ -16,8 +16,8 @@ type EventInputBaseTransaction struct {
 	Amount               decimal.Decimal `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
 	CurrencyHash         *string         `json:"currencyHash" gorm:"column:currencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	EventInputCreateTime decimal.Decimal `json:"eventInputCreateTime" gorm:"column:eventInputCreateTime;type:decimal(20,6) NOT NULL"`
-	Event                *string         `json:"event" gorm:"column:event;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
-	HardFork             *bool            `json:"hardFork" gorm:"column:hardFork;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
+	Event                *string         `json:"event" gorm:"column:event;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
+	HardFork             *bool           `json:"hardFork" gorm:"column:hardFork;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CreateTime           time.Time       `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
 	UpdateTime           time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }

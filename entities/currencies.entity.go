@@ -12,10 +12,6 @@ type Currency struct {
 	UpdateTime               time.Time `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
-func (Currency) TableName() string {
-	return "currencies"
-}
-
 func NewCurrency(currencyHash string) *Currency {
 	instance := new(Currency)
 	instance.Hash = currencyHash

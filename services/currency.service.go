@@ -5,7 +5,9 @@ import (
 	"github.com/ebfe/keccak"
 	"sync"
 )
+
 var currencyOnce sync.Once
+
 type CurrencyService interface {
 	// The exported functions
 	getCurrencyHashBySymbol(symbol string) (error error, currencyHash string)

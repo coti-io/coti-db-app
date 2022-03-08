@@ -15,6 +15,10 @@ type TokenGenerationFeeServiceData struct {
 	UpdateTime        time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
 
+func (TokenGenerationFeeServiceData) TableName() string {
+	return "token_generation_fee_service_data"
+}
+
 func NewTokenGenerationFeeServiceData(sd *dto.TokenGenerationServiceDataRes, baseTransactionId int32) *TokenGenerationFeeServiceData {
 	instance := new(TokenGenerationFeeServiceData)
 	instance.BaseTransactionId = baseTransactionId

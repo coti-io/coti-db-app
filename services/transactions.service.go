@@ -272,7 +272,7 @@ func (service *transactionService) updateBalancesIteration() error {
 			return err
 		}
 		if len(txs) == 0 {
-			fmt.Println("[updateBalancesIteration][no transactions to delete was found]")
+			fmt.Println("[updateBalancesIteration][no transactions to update balance was found]")
 			return nil
 		}
 		var transactionIds []int32
@@ -421,10 +421,10 @@ func (service *transactionService) updateBalancesIteration() error {
 		if err != nil {
 			return err
 		}
-		var currencyMapHashToId = make(map[string]int32)
+		var currencyHashToIdMap = make(map[string]int32)
 		if len(currenciesEntities) > 0 {
 			for _, c := range currenciesEntities {
-				currencyMapHashToId[c.Hash] = c.ID
+				currencyHashToIdMap[c.Hash] = c.ID
 			}
 		}
 
@@ -482,7 +482,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		var addressBalancesToCreate []entities.AddressBalance
 		for k, balanceDiff := range addressBalanceDiffMap {
 			tb := newTokenBalanceFromString(k)
-			currencyId := currencyMapHashToId[tb.CurrencyHash]
+			currencyId := currencyHashToIdMap[tb.CurrencyHash]
 			// create a new address balance
 			addressBalance := entities.NewAddressBalance(tb.AddressHash, balanceDiff, currencyId)
 			addressBalancesToCreate = append(addressBalancesToCreate, *addressBalance)
@@ -652,7 +652,7 @@ func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 		dtStart := time.Now()
 		fmt.Println("[syncNewTransactions][iteration start] " + strconv.Itoa(iteration))
 		for {
-			err := service.syncTransactionsIteration(maxTransactionsInSync, &includeUnindexed, service.currentFullnodeUrl)
+			err := service.syncNewTransactionsIteration(maxTransactionsInSync, &includeUnindexed, service.currentFullnodeUrl)
 			if err != nil {
 				fmt.Println(err)
 				if service.retries >= maxRetries {
@@ -682,7 +682,7 @@ func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 
 }
 
-func (service *transactionService) syncTransactionsIteration(maxTransactionsInSync int64, includeUnindexed *bool, fullnodeUrl string) (err error) {
+func (service *transactionService) syncNewTransactionsIteration(maxTransactionsInSync int64, includeUnindexed *bool, fullnodeUrl string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(r)
