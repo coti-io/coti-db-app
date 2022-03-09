@@ -371,7 +371,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 		var nfbts []entities.NetworkFeeBaseTransaction
 		var rbts []entities.ReceiverBaseTransaction
 		var ibts []entities.InputBaseTransaction
-		err = dbTransaction.Where("`index` = 0 AND transactionConsensusUpdateTime = 0 AND createTime < DATE_SUB(NOW(), INTERVAL ? HOUR)", deleteTxPendingMinHours).Find(&txs).Error
+		err = dbTransaction.Where("`index` = 0 AND transactionConsensusUpdateTime IS NULL AND createTime < DATE_SUB(NOW(), INTERVAL ? HOUR)", deleteTxPendingMinHours).Find(&txs).Error
 		if err != nil {
 			return err
 		}
@@ -630,7 +630,7 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 			return err
 		}
 		var dbTransactions []entities.Transaction
-		err = dbProvider.DB.Where("`index` > 0 AND transactionConsensusUpdateTime = 0").Find(&dbTransactions).Error
+		err = dbProvider.DB.Where("`index` > 0 AND transactionConsensusUpdateTime IS NULL").Find(&dbTransactions).Error
 		if err != nil {
 			return err
 		}
