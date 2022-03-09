@@ -77,7 +77,7 @@ type tokenMintingServiceDataBuilder struct {
 
 type tokenGenerationCurrencyBuilder struct {
 	ServiceDataRes *dto.TokenGenerationServiceDataRes
-	DbServiceData  *entities.TokenGenerationFeeServiceData
+	DbServiceData  *entities.TokenGenerationServiceData
 }
 
 var instance *transactionService
@@ -263,7 +263,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		var tmbts []entities.TokenMintingFeeBaseTransaction
 		var tgbts []entities.TokenGenerationFeeBaseTransaction
 		var eibts []entities.EventInputBaseTransaction
-		var tmbtServiceData []entities.TokenMintingFeeServiceData
+		var tmbtServiceData []entities.TokenMintingServiceData
 		var currencies []entities.Currency
 		// get all transaction with consensus and not processed
 		// get all indexed transaction or with status attached to dag from db
@@ -329,17 +329,17 @@ func (service *transactionService) updateBalancesIteration() error {
 
 		var currencyServiceInstance = NewCurrencyService()
 		var addressBalanceDiffMap = make(map[string]decimal.Decimal)
-		for _, tx := range tgbts {
+		for _, baseTransaction := range tgbts {
 			// calculate hash and add a currency
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 			// create a new currency
 			// get the service data
-			tgbtServiceData := entities.TokenGenerationFeeServiceData{}
-			err = dbTransaction.Where("baseTransactionId = ?", tx.ID).First(&tgbtServiceData).Error
+			tgbtServiceData := entities.TokenGenerationServiceData{}
+			err = dbTransaction.Where("baseTransactionId = ?", baseTransaction.ID).First(&tgbtServiceData).Error
 			if err != nil {
 				return err
 			}
@@ -364,55 +364,55 @@ func (service *transactionService) updateBalancesIteration() error {
 			}
 		}
 
-		for _, tx := range ffbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+		for _, baseTransaction := range ffbts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
-		for _, tx := range nfbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+		for _, baseTransaction := range nfbts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
-		for _, tx := range rbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+		for _, baseTransaction := range rbts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
-		for _, tx := range ibts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+		for _, baseTransaction := range ibts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
-		for _, tx := range eibts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.CurrencyHash)
+		for _, baseTransaction := range eibts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
-		for _, tx := range tmbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(tx.MintingCurrencyHash)
+		for _, baseTransaction := range tmbts {
+			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
-			btTokenBalance := newTokenBalance(currencyHash, tx.AddressHash)
+			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.Amount)
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 
 		}
-		for _, tx := range tmbtServiceData {
-			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, tx.MintingCurrencyHash)
-			btTokenBalance := newTokenBalance(tx.MintingCurrencyHash, tx.ReceiverAddress)
+		for _, serviceData := range tmbtServiceData {
+			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, serviceData.MintingCurrencyHash)
+			btTokenBalance := newTokenBalance(serviceData.MintingCurrencyHash, serviceData.ReceiverAddress)
 			key := btTokenBalance.toString()
-			fmt.Println(tx.MintingAmount.String())
-			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(tx.MintingAmount)
+			fmt.Println(serviceData.MintingAmount.String())
+			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(serviceData.MintingAmount)
 		}
 
 		// get all currency that have currency hash
@@ -556,7 +556,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 				tmbtBaseTransactionIds = append(tmbtBaseTransactionIds, v.ID)
 			}
 			// delete the service data
-			var tmbtsd []entities.TokenMintingFeeServiceData
+			var tmbtsd []entities.TokenMintingServiceData
 			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tmbtBaseTransactionIds}).Delete(&tmbtsd).Error
 			if err != nil {
 				return err
@@ -578,7 +578,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 				tgbtBaseTransactionIds = append(tgbtBaseTransactionIds, v.ID)
 			}
 			// find the service data
-			var tgbtsd []entities.TokenGenerationFeeServiceData
+			var tgbtsd []entities.TokenGenerationServiceData
 			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Find(&tgbtsd).Error
 			if err != nil {
 				return err
@@ -1140,7 +1140,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			log.Println(err)
 			return err
 		}
-		var tgbtServiceDataToBeSaved []*entities.TokenGenerationFeeServiceData
+		var tgbtServiceDataToBeSaved []*entities.TokenGenerationServiceData
 		for _, tgbtBuilder := range tgbtServiceDataBuilder {
 			dbServiceData := entities.NewTokenGenerationFeeServiceData(tgbtBuilder.ServiceDataRes, tgbtBuilder.DbBaseTx.ID)
 			tgbtServiceDataToBeSaved = append(tgbtServiceDataToBeSaved, dbServiceData)
@@ -1179,7 +1179,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			log.Println(err)
 			return err
 		}
-		var tmbtServiceDataToBeSaved []*entities.TokenMintingFeeServiceData
+		var tmbtServiceDataToBeSaved []*entities.TokenMintingServiceData
 		for _, tmbtBuilder := range tmbtServiceDataBuilder {
 			dbServiceData := entities.NewTokenMintingFeeServiceData(tmbtBuilder.ServiceDataRes, tmbtBuilder.DbBaseTx.ID)
 			tmbtServiceDataToBeSaved = append(tmbtServiceDataToBeSaved, dbServiceData)
