@@ -8,3 +8,10 @@ func addItemToUniqueArray(uniqueHelperMap map[string]bool, uniqueArrayOfStrings 
 	uniqueHelperMap[s] = true
 }
 
+func increaseCountIfUnique(uniqueHelperMap map[string]bool, stringCounter map[string]int32, keyToCheck string, keyToIncrease string) {
+	if uniqueHelperMap[keyToCheck] {
+		return
+	}
+	stringCounter[keyToIncrease] = stringCounter[keyToIncrease] + 1
+	uniqueHelperMap[keyToCheck] = true
+}
