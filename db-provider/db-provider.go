@@ -31,7 +31,7 @@ func Init() {
 		DontSupportRenameColumn:   true,               // `change` when rename column, rename column not supported before MySQL 8, MariaDB
 		SkipInitializeWithVersion: false,              // auto configure based on currently MySQL version
 	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Error),
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},
@@ -74,7 +74,7 @@ func migrateDb(dbName string, dbUser string, dbHost string, dbPort string, dbPas
 	db.AutoMigrate(&entities.AppState{}, &entities.Currency{}, &entities.Transaction{}, &entities.FullnodeFeeBaseTransaction{},
 		&entities.InputBaseTransaction{}, &entities.NetworkFeeBaseTransaction{}, &entities.ReceiverBaseTransaction{}, &entities.AddressBalance{},
 		&entities.CurrencyTypeData{}, &entities.OriginatorCurrencyData{}, &entities.TokenGenerationFeeBaseTransaction{}, &entities.TokenMintingFeeBaseTransaction{},
-		&entities.TokenMintingServiceData{}, &entities.TokenGenerationServiceData{}, &entities.EventInputBaseTransaction{},
+		&entities.TokenMintingServiceData{}, &entities.TokenGenerationServiceData{}, &entities.EventInputBaseTransaction{}, &entities.AddressTransactionCount{},
 	)
 	sqlDB, err := db.DB()
 	if err != nil {

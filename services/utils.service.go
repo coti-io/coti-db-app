@@ -7,3 +7,4 @@ func addItemToUniqueArray(uniqueHelperMap map[string]bool, uniqueArrayOfStrings 
 	*uniqueArrayOfStrings = append(*uniqueArrayOfStrings, s)
 	uniqueHelperMap[s] = true
 }
+
