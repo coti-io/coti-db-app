@@ -750,7 +750,10 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 }
 
 func (service *transactionService) syncNewTransactions(maxRetries uint8) {
-	var maxTransactionsInSync int64 = 3000 // in the future replace by 1000 and export to config
+	var maxTransactionsInSync, err = strconv.ParseInt(os.Getenv("MAX_TRANSACTION_IN_SYNC_ITERATION"), 0, 64)
+	if err != nil {
+		panic(err.Error())
+	}
 	var includeUnindexed = false
 
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
