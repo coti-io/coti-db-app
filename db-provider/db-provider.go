@@ -74,7 +74,7 @@ func migrateDb(dbName string, dbUser string, dbHost string, dbPort string, dbPas
 	db.AutoMigrate(&entities.AppState{}, &entities.Currency{}, &entities.Transaction{}, &entities.FullnodeFeeBaseTransaction{},
 		&entities.InputBaseTransaction{}, &entities.NetworkFeeBaseTransaction{}, &entities.ReceiverBaseTransaction{}, &entities.AddressBalance{},
 		&entities.CurrencyTypeData{}, &entities.OriginatorCurrencyData{}, &entities.TokenGenerationFeeBaseTransaction{}, &entities.TokenMintingFeeBaseTransaction{},
-		&entities.TokenMintingServiceData{}, &entities.TokenGenerationServiceData{}, &entities.EventInputBaseTransaction{}, &entities.AddressTransactionCount{},
+		&entities.TokenMintingServiceData{}, &entities.TokenGenerationServiceData{}, &entities.EventInputBaseTransaction{}, &entities.AddressTransactionCount{}, &entities.TransactionAddress{},
 	)
 	sqlDB, err := db.DB()
 	if err != nil {
