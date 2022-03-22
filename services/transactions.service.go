@@ -81,6 +81,12 @@ type tokenGenerationCurrencyBuilder struct {
 	DbServiceData  *entities.TokenGenerationServiceData
 }
 
+type transactionAddressBuilder struct {
+	txId   int32
+	addressHash string
+	attachmentTime decimal.Decimal
+}
+
 var instance *transactionService
 
 // NewTransactionService we made this one a singleton because it has a state
@@ -1181,14 +1187,18 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 	var tmbtToBeSaved []*entities.TokenMintingFeeBaseTransaction
 	var eibtToBeSaved []*entities.EventInputBaseTransaction
 	var transactionAddressToBeSaved []*entities.TransactionAddress
+	var addressesToBeSaved []*entities.Addresses
+
 
 	var tgCurrencyBuilder []*tokenGenerationCurrencyBuilder
 	var tgbtServiceDataBuilder []*tokenGenerationServiceDataBuilder
 	var tmbtServiceDataBuilder []*tokenMintingServiceDataBuilder
+	var txAddressBuilder []*transactionAddressBuilder
 
 	// to operate addressTransactionCount
 	helperMapAddressTransactionCount := make(map[string]bool)
 	helperMapTransactionAddresses := make(map[string]bool)
+	helperMapAddresses := make(map[string]bool)
 	mapAddressTransactionCount := make(map[string]int32)
 
 	for _, value := range txHashToTxBuilderMap {
@@ -1200,9 +1210,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				ibt := entities.NewInputBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", ibt.TransactionId, ibt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, ibt.AddressHash)
 				ibtToBeSaved = append(ibtToBeSaved, ibt)
@@ -1210,9 +1223,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				rbt := entities.NewReceiverBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", rbt.TransactionId, rbt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, rbt.AddressHash)
 				rbtToBeSaved = append(rbtToBeSaved, rbt)
@@ -1220,9 +1236,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				ffbt := entities.NewFullnodeFeeBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", ffbt.TransactionId, ffbt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, ffbt.AddressHash)
 				ffbtToBeSaved = append(ffbtToBeSaved, ffbt)
@@ -1230,9 +1249,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				nfbt := entities.NewNetworkFeeBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", nfbt.TransactionId, nfbt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, nfbt.AddressHash)
 				nfbtToBeSaved = append(nfbtToBeSaved, nfbt)
@@ -1240,9 +1262,14 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				tgbt := entities.NewTokenGenerationFeeBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", tgbt.TransactionId, tgbt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
+					//transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
+					//transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, tgbt.AddressHash)
 				tgbtToBeSaved = append(tgbtToBeSaved, tgbt)
@@ -1251,9 +1278,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				tmbt := entities.NewTokenMintingFeeBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", tmbt.TransactionId, tmbt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, tmbt.AddressHash)
 				tmbtToBeSaved = append(tmbtToBeSaved, tmbt)
@@ -1262,9 +1292,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				eibt := entities.NewEventInputBaseTransaction(&baseTransaction, txId)
 				uniqueIdAddressString := fmt.Sprintf("%d_%s", eibt.TransactionId, eibt.AddressHash)
 				if !helperMapTransactionAddresses[uniqueIdAddressString] {
-					transactionAddress := entities.NewTransactionAddress(baseTransaction.AddressHash, attachmentTime, txId)
-					transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+					txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: baseTransaction.AddressHash, txId: txId, attachmentTime: attachmentTime})
 					helperMapTransactionAddresses[uniqueIdAddressString] = true
+				}
+				if !helperMapAddresses[baseTransaction.AddressHash] {
+					helperMapAddresses[baseTransaction.AddressHash] = true
+					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
 				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, eibt.AddressHash)
 				eibtToBeSaved = append(eibtToBeSaved, eibt)
@@ -1355,9 +1388,12 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			dbServiceData := entities.NewTokenMintingFeeServiceData(tmbtBuilder.ServiceDataRes, tmbtBuilder.DbBaseTx.ID)
 			uniqueIdAddressString := fmt.Sprintf("%d_%s", tmbtBuilder.DbBaseTx.TransactionId, dbServiceData.ReceiverAddress)
 			if !helperMapTransactionAddresses[uniqueIdAddressString] {
-				transactionAddress := entities.NewTransactionAddress(dbServiceData.ReceiverAddress, tmbtBuilder.DbTx.AttachmentTime, tmbtBuilder.DbBaseTx.TransactionId)
-				transactionAddressToBeSaved = append(transactionAddressToBeSaved, transactionAddress)
+				txAddressBuilder = append(txAddressBuilder, &transactionAddressBuilder{addressHash: dbServiceData.ReceiverAddress, txId: tmbtBuilder.DbBaseTx.TransactionId, attachmentTime: tmbtBuilder.DbTx.AttachmentTime})
 				helperMapTransactionAddresses[uniqueIdAddressString] = true
+			}
+			if !helperMapAddresses[dbServiceData.ReceiverAddress] {
+				helperMapAddresses[dbServiceData.ReceiverAddress] = true
+				addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(dbServiceData.ReceiverAddress))
 			}
 			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, dbServiceData.ReceiverAddress)
 			tmbtServiceDataToBeSaved = append(tmbtServiceDataToBeSaved, dbServiceData)
@@ -1371,12 +1407,36 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 	if err != nil {
 		return err
 	}
-	if len(transactionAddressToBeSaved) > 0 {
+	mapAddressHashToAddressId := make(map[string]int32)
+	if len(addressesToBeSaved) > 0 {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Omit("CreateTime", "UpdateTime").Create(&addressesToBeSaved).Error; err != nil {
+			log.Println(err)
+			return err
+		}
+		var addressHashes []string
+		for _ , v := range addressesToBeSaved {
+			addressHashes = append(addressHashes, v.AddressHash)
+		}
+		var addresses []*entities.Addresses
+		err = tx.Where(map[string]interface{}{"addressHash": addressHashes}).Find(&addresses).Error
+		if err != nil {
+			return err
+		}
+		for _, addr := range addresses {
+			mapAddressHashToAddressId[addr.AddressHash] = addr.ID
+		}
+	}
+	if len(txAddressBuilder) > 0 {
+		for _, txab := range txAddressBuilder {
+			addressId := mapAddressHashToAddressId[txab.addressHash]
+			transactionAddressToBeSaved = append(transactionAddressToBeSaved, entities.NewTransactionAddress(addressId, txab.attachmentTime, txab.txId))
+		}
 		if err := tx.Omit("CreateTime", "UpdateTime").Create(&transactionAddressToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
+
 	return nil
 
 }
