@@ -13,6 +13,7 @@ type TransactionResponse struct {
 	CreateTime                     decimal.Decimal       `json:"createTime"`
 	LeftParentHash                 *string               `json:"leftParentHash"`
 	RightParentHash                *string               `json:"rightParentHash"`
+	NodeHash                       *string               `json:"nodeHash"`
 	SenderHash                     *string               `json:"senderHash"`
 	SenderTrustScore               float64               `json:"senderTrustScore"`
 	TransactionConsensusUpdateTime decimal.NullDecimal   `json:"transactionConsensusUpdateTime"`

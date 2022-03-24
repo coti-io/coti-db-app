@@ -17,6 +17,7 @@ type Transaction struct {
 	TransactionCreateTime          decimal.Decimal     `json:"transactionCreateTime" gorm:"column:transactionCreateTime;type:decimal(20,6) NOT NULL"`
 	LeftParentHash                 *string             `json:"leftParentHash" gorm:"column:leftParentHash;type:varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	RightParentHash                *string             `json:"rightParentHash" gorm:"column:rightParentHash;type:varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL"`
+	NodeHash                       *string             `json:"nodeHash" gorm:"column:nodeHash;type:varchar(128) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SenderHash                     *string             `json:"senderHash" gorm:"column:senderHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SenderTrustScore               float64             `json:"senderTrustScore" gorm:"column:senderTrustScore;type:decimal(20,10) NOT NULL"`
 	TransactionConsensusUpdateTime decimal.NullDecimal `json:"transactionConsensusUpdateTime" gorm:"column:transactionConsensusUpdateTime;type:decimal(20,6)"`
@@ -38,6 +39,7 @@ func NewTransaction(tx *dto.TransactionResponse) *Transaction {
 	instance.TransactionCreateTime = tx.CreateTime
 	instance.LeftParentHash = tx.LeftParentHash
 	instance.RightParentHash = tx.RightParentHash
+	instance.NodeHash = tx.NodeHash
 	instance.SenderHash = tx.SenderHash
 	instance.SenderTrustScore = tx.SenderTrustScore
 	instance.TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
