@@ -73,7 +73,7 @@ type tokenGenerationServiceDataBuilder struct {
 type tokenMintingServiceDataBuilder struct {
 	ServiceDataRes *dto.TokenMintingServiceDataRes
 	DbBaseTx       *entities.TokenMintingFeeBaseTransaction
-	DbTx			*entities.Transaction
+	DbTx           *entities.Transaction
 }
 
 type tokenGenerationCurrencyBuilder struct {
@@ -82,8 +82,8 @@ type tokenGenerationCurrencyBuilder struct {
 }
 
 type transactionAddressBuilder struct {
-	txId   int32
-	addressHash string
+	txId           int32
+	addressHash    string
 	attachmentTime decimal.Decimal
 }
 
@@ -428,13 +428,12 @@ func (service *transactionService) updateBalancesIteration() error {
 			return err
 		}
 
-
 		return nil
 	})
 	return err
 }
 
-func updateBalances(dbTransaction *gorm.DB, currencyHashUniqueArray []string, addressBalanceDiffMap map[string]decimal.Decimal ) (err error) {
+func updateBalances(dbTransaction *gorm.DB, currencyHashUniqueArray []string, addressBalanceDiffMap map[string]decimal.Decimal) (err error) {
 	// get all currency that have currency hash
 	currenciesEntities := make([]entities.Currency, len(currencyHashUniqueArray))
 	err = dbTransaction.Where(map[string]interface{}{"hash": currencyHashUniqueArray}).Find(&currenciesEntities).Error
@@ -638,7 +637,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 			var mapBtxIdToTxId = make(map[int32]int32)
 			for _, v := range tmbt {
 				mapBtxIdToTxId[v.ID] = v.TransactionId
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 				tmbtBaseTransactionIds = append(tmbtBaseTransactionIds, v.ID)
 			}
 
@@ -649,7 +648,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 				return err
 			}
 			for _, v := range deletedTmbtsd {
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", mapBtxIdToTxId[v.ID], v.ReceiverAddress), v.ReceiverAddress)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", mapBtxIdToTxId[v.ID], v.ReceiverAddress), v.ReceiverAddress)
 			}
 			err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&tmbt).Error
 			if err != nil {
@@ -665,7 +664,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 			// get base transactions ids
 			var tgbtBaseTransactionIds []int32
 			for _, v := range tmbt {
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 				tgbtBaseTransactionIds = append(tgbtBaseTransactionIds, v.ID)
 			}
 			// find the service data
@@ -705,35 +704,35 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 			return err
 		}
 		for _, v := range ffbts {
-			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 		}
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&nfbts).Error
 		if err != nil {
 			return err
 		}
 		for _, v := range nfbts {
-			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 		}
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&rbts).Error
 		if err != nil {
 			return err
 		}
 		for _, v := range rbts {
-			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 		}
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&ibts).Error
 		if err != nil {
 			return err
 		}
 		for _, v := range ibts {
-			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 		}
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&eibts).Error
 		if err != nil {
 			return err
 		}
 		for _, v := range eibts {
-			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
+			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, fmt.Sprintf("%d_%s", v.TransactionId, v.AddressHash), v.AddressHash)
 		}
 		err = dbTransaction.Where(map[string]interface{}{"id": transactionIds}).Delete(&txs).Error
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&txsAddresses).Error
@@ -754,7 +753,6 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 	if err != nil {
 		return err
 	}
-
 
 	return nil
 }
@@ -1189,7 +1187,6 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 	var transactionAddressToBeSaved []*entities.TransactionAddress
 	var addressesToBeSaved []*entities.Addresses
 
-
 	var tgCurrencyBuilder []*tokenGenerationCurrencyBuilder
 	var tgbtServiceDataBuilder []*tokenGenerationServiceDataBuilder
 	var tmbtServiceDataBuilder []*tokenMintingServiceDataBuilder
@@ -1217,7 +1214,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, ibt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, ibt.AddressHash)
 				ibtToBeSaved = append(ibtToBeSaved, ibt)
 			case "RBT":
 				rbt := entities.NewReceiverBaseTransaction(&baseTransaction, txId)
@@ -1230,7 +1227,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, rbt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, rbt.AddressHash)
 				rbtToBeSaved = append(rbtToBeSaved, rbt)
 			case "FFBT":
 				ffbt := entities.NewFullnodeFeeBaseTransaction(&baseTransaction, txId)
@@ -1243,7 +1240,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, ffbt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, ffbt.AddressHash)
 				ffbtToBeSaved = append(ffbtToBeSaved, ffbt)
 			case "NFBT":
 				nfbt := entities.NewNetworkFeeBaseTransaction(&baseTransaction, txId)
@@ -1256,7 +1253,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, nfbt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, nfbt.AddressHash)
 				nfbtToBeSaved = append(nfbtToBeSaved, nfbt)
 			case "TGBT":
 				tgbt := entities.NewTokenGenerationFeeBaseTransaction(&baseTransaction, txId)
@@ -1271,7 +1268,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, tgbt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, tgbt.AddressHash)
 				tgbtToBeSaved = append(tgbtToBeSaved, tgbt)
 				tgbtServiceDataBuilder = append(tgbtServiceDataBuilder, &tokenGenerationServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenGenerationServiceResponseData, DbBaseTx: tgbt})
 			case "TMBT":
@@ -1285,7 +1282,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, tmbt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, tmbt.AddressHash)
 				tmbtToBeSaved = append(tmbtToBeSaved, tmbt)
 				tmbtServiceDataBuilder = append(tmbtServiceDataBuilder, &tokenMintingServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenMintingServiceResponseData, DbBaseTx: tmbt, DbTx: value.DbTx})
 			case "EIBT":
@@ -1299,7 +1296,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 					helperMapAddresses[baseTransaction.AddressHash] = true
 					addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(baseTransaction.AddressHash))
 				}
-				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, eibt.AddressHash)
+				increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, eibt.AddressHash)
 				eibtToBeSaved = append(eibtToBeSaved, eibt)
 			default:
 				fmt.Println("Unknown base transaction name: ", baseTransaction.Name)
@@ -1395,7 +1392,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				helperMapAddresses[dbServiceData.ReceiverAddress] = true
 				addressesToBeSaved = append(addressesToBeSaved, entities.NewAddresses(dbServiceData.ReceiverAddress))
 			}
-			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount,uniqueIdAddressString, dbServiceData.ReceiverAddress)
+			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, dbServiceData.ReceiverAddress)
 			tmbtServiceDataToBeSaved = append(tmbtServiceDataToBeSaved, dbServiceData)
 		}
 		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tmbtServiceDataToBeSaved).Error; err != nil {
@@ -1414,7 +1411,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			return err
 		}
 		var addressHashes []string
-		for _ , v := range addressesToBeSaved {
+		for _, v := range addressesToBeSaved {
 			addressHashes = append(addressHashes, v.AddressHash)
 		}
 		var addresses []*entities.Addresses

@@ -6,7 +6,7 @@ import (
 
 type TransactionResponse struct {
 	Hash                           string                `json:"hash"`
-	Index                          *int32                 `json:"index,omitempty"`
+	Index                          *int32                `json:"index,omitempty"`
 	Amount                         decimal.Decimal       `json:"amount"`
 	AttachmentTime                 decimal.Decimal       `json:"attachmentTime"`
 	IsValid                        *bool                 `json:"isValid"`
