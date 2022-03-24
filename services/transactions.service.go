@@ -1176,7 +1176,7 @@ func (service *transactionService) GetLastIteration() int64 {
 	return service.lastIterationIndex
 }
 
-func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToTxBuilderMap map[string]TxBuilder, tx *gorm.DB) error {
+func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToTxBuilderMap map[string]TxBuilder, db *gorm.DB) error {
 	var ibtsToBeSaved []*entities.InputBaseTransaction
 	var rbtsToBeSaved []*entities.ReceiverBaseTransaction
 	var ffbtsToBeSaved []*entities.FullnodeFeeBaseTransaction
@@ -1244,38 +1244,38 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 	}
 
 	if len(ibtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&ibtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&ibtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
 
 	if len(rbtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&rbtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&rbtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
 	if len(ffbtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&ffbtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&ffbtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
 	if len(nfbtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&nfbtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&nfbtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
 	if len(eibtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&eibtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&eibtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
 	if len(tgbtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tgbtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&tgbtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
@@ -1286,7 +1286,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			tgCurrencyBuilders = append(tgCurrencyBuilders, &TokenGenerationCurrencyBuilder{ServiceDataRes: tgbtBuilder.ServiceDataRes, DbServiceData: dbServiceData})
 
 		}
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tgbtServiceDataToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&tgbtServiceDataToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
@@ -1298,14 +1298,14 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				originatorCurrencyDataToBeSaved = append(originatorCurrencyDataToBeSaved, entities.NewOriginatorCurrencyData(&currencyBuilder.ServiceDataRes.OriginatorCurrencyData, currencyBuilder.DbServiceData.ID))
 			}
 			if len(currencyTypeDataToBeSaved) > 0 {
-				if err := tx.Omit("CreateTime", "UpdateTime").Create(&currencyTypeDataToBeSaved).Error; err != nil {
+				if err := db.Omit("CreateTime", "UpdateTime").Create(&currencyTypeDataToBeSaved).Error; err != nil {
 					log.Println(err)
 					return err
 				}
 			}
 
 			if len(originatorCurrencyDataToBeSaved) > 0 {
-				if err := tx.Omit("CreateTime", "UpdateTime").Create(&originatorCurrencyDataToBeSaved).Error; err != nil {
+				if err := db.Omit("CreateTime", "UpdateTime").Create(&originatorCurrencyDataToBeSaved).Error; err != nil {
 					log.Println(err)
 					return err
 				}
@@ -1314,7 +1314,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 		}
 	}
 	if len(tmbtsToBeSaved) > 0 {
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tmbtsToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&tmbtsToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
@@ -1333,31 +1333,51 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			increaseCountIfUnique(helperMapAddressTransactionCount, mapAddressTransactionCount, uniqueIdAddressString, dbServiceData.ReceiverAddress)
 			tmbtServiceDataToBeSaved = append(tmbtServiceDataToBeSaved, dbServiceData)
 		}
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&tmbtServiceDataToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&tmbtServiceDataToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
 	}
-	err := updateAddressCounts(tx, mapAddressTransactionCount)
+	err := updateAddressCounts(db, mapAddressTransactionCount)
 	if err != nil {
 		return err
 	}
 	mapAddressHashToAddressId := make(map[string]int32)
 	if len(addressesToBeSaved) > 0 {
-		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Omit("CreateTime", "UpdateTime").Create(&addressesToBeSaved).Error; err != nil {
-			log.Println(err)
-			return err
-		}
 		var addressHashes []string
 		for _, v := range addressesToBeSaved {
 			addressHashes = append(addressHashes, v.AddressHash)
 		}
-		var addresses []*entities.Address
-		err = tx.Where(map[string]interface{}{"addressHash": addressHashes}).Find(&addresses).Error
+		var existingAddresses []*entities.Address
+		err := db.Where(map[string]interface{}{"addressHash": addressHashes}).Find(&existingAddresses).Error
 		if err != nil {
 			return err
 		}
-		for _, addr := range addresses {
+		var newAddresses []*entities.Address
+		for _, addressToBeSaved := range addressesToBeSaved {
+			created := false
+			for _, existingAddress := range existingAddresses {
+				if addressToBeSaved.AddressHash == existingAddress.AddressHash {
+					created = true
+					break
+				}
+			}
+			if !created {
+				newAddresses = append(newAddresses, addressToBeSaved)
+			}
+		}
+		if len(newAddresses) > 0 {
+			err = db.Omit("CreateTime", "UpdateTime").Create(&newAddresses).Error
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+
+		for _, addr := range existingAddresses {
+			mapAddressHashToAddressId[addr.AddressHash] = addr.ID
+		}
+		for _, addr := range newAddresses {
 			mapAddressHashToAddressId[addr.AddressHash] = addr.ID
 		}
 	}
@@ -1366,7 +1386,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			addressId := mapAddressHashToAddressId[txAddressBuilder.addressHash]
 			transactionAddressesToBeSaved = append(transactionAddressesToBeSaved, entities.NewTransactionAddress(addressId, txAddressBuilder.attachmentTime, txAddressBuilder.txId))
 		}
-		if err := tx.Omit("CreateTime", "UpdateTime").Create(&transactionAddressesToBeSaved).Error; err != nil {
+		if err := db.Omit("CreateTime", "UpdateTime").Create(&transactionAddressesToBeSaved).Error; err != nil {
 			log.Println(err)
 			return err
 		}
