@@ -1042,7 +1042,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 
 	if includeIndexed {
 		log.Printf("[getTransactions][Getting transactions from index %d to index %d]\n", startingIndex, endingIndex)
-		values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10)}
+		values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10), "extended": "true"}
 		jsonData, err := json.Marshal(values)
 
 		if err != nil {
