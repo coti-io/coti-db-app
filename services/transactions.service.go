@@ -201,6 +201,10 @@ func (service *transactionService) getAlternateNodeUrl(fullnodeUrl string) strin
 
 func (service *transactionService) cleanUnindexedTransaction() {
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
+	interval, err := strconv.ParseFloat(os.Getenv("CLEAN_UNINDEXED_TRANSACTIONS_INTERVAL_IN_SECONDS"),  64)
+	if err != nil {
+		panic(err.Error())
+	}
 	iteration := 0
 	for {
 		dtStart := time.Now()
@@ -215,8 +219,8 @@ func (service *transactionService) cleanUnindexedTransaction() {
 		dtEnd := time.Now()
 		diff := dtEnd.Sub(dtStart)
 		diffInSeconds := diff.Seconds()
-		if diffInSeconds < 10 && diffInSeconds > 0 {
-			timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+		if diffInSeconds < interval && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(interval - diffInSeconds)
 			fmt.Println("[cleanUnindexedTransaction][sleeping for] ", timeDurationToSleep)
 			time.Sleep(timeDurationToSleep * time.Second)
 
@@ -226,6 +230,10 @@ func (service *transactionService) cleanUnindexedTransaction() {
 
 func (service *transactionService) updateBalances() {
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
+	interval, err := strconv.ParseFloat(os.Getenv("UPDATE_BALANCES_INTERVAL_IN_SECONDS"),  64)
+	if err != nil {
+		panic(err.Error())
+	}
 	iteration := 0
 	for {
 		dtStart := time.Now()
@@ -240,8 +248,8 @@ func (service *transactionService) updateBalances() {
 		dtEnd := time.Now()
 		diff := dtEnd.Sub(dtStart)
 		diffInSeconds := diff.Seconds()
-		if diffInSeconds < 10 && diffInSeconds > 0 {
-			timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+		if diffInSeconds < interval && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(interval - diffInSeconds)
 			fmt.Println("[updateBalances][sleeping for] ", timeDurationToSleep)
 			time.Sleep(timeDurationToSleep * time.Second)
 
@@ -758,7 +766,11 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 }
 
 func (service *transactionService) syncNewTransactions(maxRetries uint8) {
-	var maxTransactionsInSync, err = strconv.ParseInt(os.Getenv("MAX_TRANSACTION_IN_SYNC_ITERATION"), 0, 64)
+	maxTransactionsInSync, err := strconv.ParseInt(os.Getenv("MAX_TRANSACTION_IN_SYNC_ITERATION"), 0, 64)
+	if err != nil {
+		panic(err.Error())
+	}
+	interval, err := strconv.ParseFloat(os.Getenv("SYNC_NEW_TRANSACTIONS_INTERVAL_IN_SECONDS"),  64)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -791,8 +803,8 @@ func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 		dtEnd := time.Now()
 		diff := dtEnd.Sub(dtStart)
 		diffInSeconds := diff.Seconds()
-		if diffInSeconds < 10 && diffInSeconds > 0 && includeUnindexed {
-			timeDurationToSleep := time.Duration(float64(10) - diffInSeconds)
+		if diffInSeconds < interval && diffInSeconds > 0 && includeUnindexed {
+			timeDurationToSleep := time.Duration(interval - diffInSeconds)
 			fmt.Println("[syncNewTransactions][sleeping for] ", timeDurationToSleep)
 			time.Sleep(timeDurationToSleep * time.Second)
 
@@ -935,6 +947,10 @@ func (service *transactionService) syncNewTransactionsIteration(maxTransactionsI
 
 func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	iteration := 0
+	interval, err := strconv.ParseFloat(os.Getenv("MONITOR_TRANSACTION_INTERVAL_IN_SECONDS"),  64)
+	if err != nil {
+		panic(err.Error())
+	}
 	for {
 		iteration++
 		dtStart := time.Now()
@@ -960,8 +976,8 @@ func (service *transactionService) monitorTransactions(maxRetries uint8) {
 		dtEnd := time.Now()
 		diff := dtEnd.Sub(dtStart)
 		diffInSeconds := diff.Seconds()
-		if diffInSeconds < 5 && diffInSeconds > 0 {
-			timeDurationToSleep := time.Duration(float64(5) - diffInSeconds)
+		if diffInSeconds < interval && diffInSeconds > 0 {
+			timeDurationToSleep := time.Duration(interval - diffInSeconds)
 			fmt.Println("[monitorTransactions][sleeping for] ", timeDurationToSleep)
 			time.Sleep(timeDurationToSleep * time.Second)
 
