@@ -12,7 +12,7 @@ type Transaction struct {
 	Hash                           string              `json:"hash" gorm:"column:hash;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:hash_INDEX"`
 	Index                          *int32              `json:"index" gorm:"column:index;type:int(11) DEFAULT NULL;index:index_INDEX"`
 	Amount                         decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
-	AttachmentTime                 decimal.Decimal     `json:"attachmentTime" gorm:"column:attachmentTime;type:decimal(20,6) NOT NULL"`
+	AttachmentTime                 decimal.Decimal     `json:"attachmentTime" gorm:"column:attachmentTime;type:decimal(20,6) NOT NULL;index:attachmentTime_INDEX"`
 	IsValid                        sql.NullBool        `json:"isValid" gorm:"column:isValid;type:tinyint(4) DEFAULT NULL"`
 	TransactionCreateTime          decimal.Decimal     `json:"transactionCreateTime" gorm:"column:transactionCreateTime;type:decimal(20,6) NOT NULL"`
 	LeftParentHash                 *string             `json:"leftParentHash" gorm:"column:leftParentHash;type:varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL"`

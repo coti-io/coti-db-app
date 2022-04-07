@@ -201,7 +201,7 @@ func (service *transactionService) getAlternateNodeUrl(fullnodeUrl string) strin
 
 func (service *transactionService) cleanUnindexedTransaction() {
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
-	interval, err := strconv.ParseFloat(os.Getenv("CLEAN_UNINDEXED_TRANSACTIONS_INTERVAL_IN_SECONDS"),  64)
+	interval, err := strconv.ParseFloat(os.Getenv("CLEAN_UNINDEXED_TRANSACTIONS_INTERVAL_IN_SECONDS"), 64)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -230,7 +230,7 @@ func (service *transactionService) cleanUnindexedTransaction() {
 
 func (service *transactionService) updateBalances() {
 	// when slice was less than 1000 once replace to the other method that gets un-indexed ones as well
-	interval, err := strconv.ParseFloat(os.Getenv("UPDATE_BALANCES_INTERVAL_IN_SECONDS"),  64)
+	interval, err := strconv.ParseFloat(os.Getenv("UPDATE_BALANCES_INTERVAL_IN_SECONDS"), 64)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -770,7 +770,7 @@ func (service *transactionService) syncNewTransactions(maxRetries uint8) {
 	if err != nil {
 		panic(err.Error())
 	}
-	interval, err := strconv.ParseFloat(os.Getenv("SYNC_NEW_TRANSACTIONS_INTERVAL_IN_SECONDS"),  64)
+	interval, err := strconv.ParseFloat(os.Getenv("SYNC_NEW_TRANSACTIONS_INTERVAL_IN_SECONDS"), 64)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -947,7 +947,7 @@ func (service *transactionService) syncNewTransactionsIteration(maxTransactionsI
 
 func (service *transactionService) monitorTransactions(maxRetries uint8) {
 	iteration := 0
-	interval, err := strconv.ParseFloat(os.Getenv("MONITOR_TRANSACTION_INTERVAL_IN_SECONDS"),  64)
+	interval, err := strconv.ParseFloat(os.Getenv("MONITOR_TRANSACTION_INTERVAL_IN_SECONDS"), 64)
 	if err != nil {
 		panic(err.Error())
 	}
