@@ -20,12 +20,12 @@ type Transaction struct {
 	NodeHash                       *string             `json:"nodeHash" gorm:"column:nodeHash;type:varchar(128) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SenderHash                     *string             `json:"senderHash" gorm:"column:senderHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SenderTrustScore               float64             `json:"senderTrustScore" gorm:"column:senderTrustScore;type:decimal(20,10) NOT NULL"`
-	TransactionConsensusUpdateTime decimal.NullDecimal `json:"transactionConsensusUpdateTime" gorm:"column:transactionConsensusUpdateTime;type:decimal(20,6)"`
+	TransactionConsensusUpdateTime decimal.NullDecimal `json:"transactionConsensusUpdateTime" gorm:"column:transactionConsensusUpdateTime;type:decimal(20,6);index:composite_INDEX,priority:3"`
 	TransactionDescription         *string             `json:"transactionDescription" gorm:"column:transactionDescription;type:varchar(500) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	TrustChainConsensus            bool                `json:"trustChainConsensus" gorm:"column:trustChainConsensus;type:tinyint(4) DEFAULT NULL"`
 	TrustChainTrustScore           decimal.Decimal     `json:"trustChainTrustScore" gorm:"column:trustChainTrustScore;type:decimal(20,10) NOT NULL"`
-	Type                           *string             `json:"type" gorm:"column:type;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:type_INDEX"`
-	IsProcessed                    bool                `json:"isProcessed" gorm:"column:isProcessed;type:tinyint(4) DEFAULT false;index:isProcessed_INDEX"`
+	Type                           *string             `json:"type" gorm:"column:type;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:type_INDEX;index:composite_INDEX,priority:2"`
+	IsProcessed                    bool                `json:"isProcessed" gorm:"column:isProcessed;type:tinyint(4) DEFAULT false;index:isProcessed_INDEX;index:composite_INDEX,priority:1"`
 	CreateTime                     time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
 	UpdateTime                     time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }
