@@ -27,7 +27,7 @@ type Transaction struct {
 	Type                           *string             `json:"type" gorm:"column:type;type:varchar(100) COLLATE utf8_unicode_ci NOT NULL;index:type_INDEX;index:composite_INDEX,priority:2"`
 	IsProcessed                    bool                `json:"isProcessed" gorm:"column:isProcessed;type:tinyint(4) DEFAULT false;index:isProcessed_INDEX;index:composite_INDEX,priority:1"`
 	CreateTime                     time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
-	UpdateTime                     time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
+	UpdateTime                     time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;index:updateTime_INDEX"`
 }
 
 func NewTransaction(tx *dto.TransactionResponse) *Transaction {
