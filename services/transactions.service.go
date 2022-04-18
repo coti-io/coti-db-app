@@ -676,8 +676,8 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 				tgbtBaseTransactionIds = append(tgbtBaseTransactionIds, v.ID)
 			}
 			// find the service data
-			var tgbtsd []entities.TokenGenerationServiceData
-			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Find(&tgbtsd).Error
+			var tokenGenerationServiceData []entities.TokenGenerationServiceData
+			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Find(&tokenGenerationServiceData).Error
 			if err != nil {
 				return err
 			}
@@ -697,7 +697,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 			if err != nil {
 				return err
 			}
-			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Delete(&tgbtsd).Error
+			err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tgbtBaseTransactionIds}).Delete(&tokenGenerationServiceData).Error
 			if err != nil {
 				return err
 			}
@@ -878,7 +878,7 @@ func (service *transactionService) syncNewTransactionsIteration(maxTransactionsI
 			for _, tx := range transactions {
 				exists := false
 				for i, dbTx := range dbTransactionsRes {
-					if dbTx.Hash == tx.Hash && dbTx.Index != nil {
+					if dbTx.Hash == tx.Hash {
 						exists = true
 						if tx.TransactionConsensusUpdateTime != dbTx.TransactionConsensusUpdateTime {
 							dbTransactionsRes[i].TransactionConsensusUpdateTime = tx.TransactionConsensusUpdateTime
