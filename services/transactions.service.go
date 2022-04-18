@@ -1058,7 +1058,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 
 	if includeIndexed {
 		log.Printf("[getTransactions][Getting transactions from index %d to index %d]\n", startingIndex, endingIndex)
-		values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10), "extended": "true"}
+		values := map[string]string{"startingIndex": strconv.FormatInt(startingIndex, 10), "endingIndex": strconv.FormatInt(endingIndex, 10), "extended": "true", "includeRuntimeTrustScore": "true"}
 		jsonData, err := json.Marshal(values)
 
 		if err != nil {
@@ -1114,7 +1114,7 @@ func (service *transactionService) getTransactions(startingIndex int64, endingIn
 }
 
 func (service *transactionService) getTransactionsByHash(hashArray []string, fullnodeUrl string) (txs []dto.TransactionResponse, err error) {
-	values := map[string][]string{"transactionHashes": hashArray}
+	values := map[string]interface{}{"transactionHashes": hashArray, "includeRuntimeTrustScore": "true"}
 	jsonData, err := json.Marshal(values)
 
 	if err != nil {
