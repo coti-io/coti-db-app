@@ -28,7 +28,6 @@ type BaseTransactionsRes struct {
 	TransactionHash                    *string                       `json:"transactionHash"`
 	AddressHash                        string                        `json:"addressHash"`
 	Amount                             decimal.Decimal               `json:"amount"`
-	FullnodeFeeCreateTime              decimal.Decimal               `json:"fullnodeFeeCreateTime"`
 	OriginalAmount                     decimal.NullDecimal           `json:"originalAmount"`
 	Hash                               string                        `json:"hash"`
 	Name                               string                        `json:"name"`

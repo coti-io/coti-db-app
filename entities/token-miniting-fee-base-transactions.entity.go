@@ -13,10 +13,10 @@ type TokenMintingFeeBaseTransaction struct {
 	Hash                      string              `json:"hash" gorm:"column:hash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
 	Name                      string              `json:"name" gorm:"column:name;type:varchar(45) COLLATE utf8_unicode_ci NOT NULL DEFAULT ''"`
 	AddressHash               string              `json:"addressHash" gorm:"column:addressHash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
-	Amount                    decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
+	Amount                    decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(25,10) NOT NULL"`
 	CurrencyHash              *string             `json:"currencyHash" gorm:"column:currencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	TokenMintingFeeCreateTime decimal.Decimal     `json:"tokenMintingFeeCreateTime" gorm:"column:tokenMintingFeeCreateTime;type:decimal(20,6) NOT NULL"`
-	OriginalAmount            decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(20,10)"`
+	OriginalAmount            decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(25,10)"`
 	OriginalCurrencyHash      *string             `json:"originalCurrencyHash" gorm:"column:originalCurrencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	SignerHash                *string             `json:"signerHash" gorm:"column:signerHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CreateTime                time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
@@ -29,6 +29,7 @@ func NewTokenMintingFeeBaseTransaction(btx *dto.BaseTransactionsRes, transaction
 	instance.Hash = btx.Hash
 	instance.Name = btx.Name
 	instance.AddressHash = btx.AddressHash
+	instance.CurrencyHash = btx.CurrencyHash
 	instance.Amount = btx.Amount
 	instance.TokenMintingFeeCreateTime = btx.CreateTime //time.Unix(int64(tx.CreateTime), 0)
 	instance.OriginalAmount = btx.OriginalAmount

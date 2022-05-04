@@ -13,10 +13,10 @@ type TokenGenerationFeeBaseTransaction struct {
 	Hash                         string              `json:"hash" gorm:"column:hash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
 	AddressHash                  string              `json:"addressHash" gorm:"column:addressHash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
 	Name                         string              `json:"name" gorm:"column:name;type:varchar(45) COLLATE utf8_unicode_ci NOT NULL DEFAULT ''"`
-	Amount                       decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
+	Amount                       decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(25,10) NOT NULL"`
 	CurrencyHash                 *string             `json:"currencyHash" gorm:"column:currencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	TokenGenerationFeeCreateTime decimal.Decimal     `json:"fullnodeFeeCreateTime" gorm:"column:fullnodeFeeCreateTime;type:decimal(20,6) NOT NULL"`
-	OriginalAmount               decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(20,10)"`
+	OriginalAmount               decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(25,10)"`
 	OriginalCurrencyHash         *string             `json:"originalCurrencyHash" gorm:"column:originalCurrencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CreateTime                   time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
 	UpdateTime                   time.Time           `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`

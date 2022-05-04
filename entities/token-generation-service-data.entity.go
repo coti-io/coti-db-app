@@ -10,7 +10,7 @@ import (
 type TokenGenerationServiceData struct {
 	ID                int32           `json:"id" gorm:"column:id;type:int(11) NOT NULL AUTO_INCREMENT"`
 	BaseTransactionId int32           `json:"baseTransactionId" gorm:"column:baseTransactionId;type:int(11) NOT NULL;index:baseTransactionId_INDEX"`
-	FeeAmount         decimal.Decimal `json:"feeAmount" gorm:"column:feeAmount;type:decimal(20,10) NOT NULL"`
+	FeeAmount         decimal.Decimal `json:"feeAmount" gorm:"column:feeAmount;type:decimal(25,10) NOT NULL"`
 	CreateTime        time.Time       `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
 	UpdateTime        time.Time       `json:"updateTime" gorm:"column:updateTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"`
 }

@@ -13,10 +13,10 @@ type ReceiverBaseTransaction struct {
 	Hash                 string              `json:"hash" gorm:"column:hash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
 	Name                 string              `json:"name" gorm:"column:name;type:varchar(45) COLLATE utf8_unicode_ci NOT NULL DEFAULT ''"`
 	AddressHash          string              `json:"addressHash" gorm:"column:addressHash;type:varchar(200) COLLATE utf8_unicode_ci NOT NULL"`
-	Amount               decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(20,10) NOT NULL"`
+	Amount               decimal.Decimal     `json:"amount" gorm:"column:amount;type:decimal(25,10) NOT NULL"`
 	CurrencyHash         *string             `json:"currencyHash" gorm:"column:currencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	ReceiverCreateTime   decimal.Decimal     `json:"receiverCreateTime" gorm:"column:receiverCreateTime;type:decimal(20,6) NOT NULL"`
-	OriginalAmount       decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(20,10) NOT NULL"`
+	OriginalAmount       decimal.NullDecimal `json:"originalAmount" gorm:"column:originalAmount;type:decimal(25,10) NOT NULL"`
 	OriginalCurrencyHash *string             `json:"originalCurrencyHash" gorm:"column:originalCurrencyHash;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	ReceiverDescription  *string             `json:"receiverDescription" gorm:"column:receiverDescription;type:varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL"`
 	CreateTime           time.Time           `json:"createTime" gorm:"column:createTime;type:timestamp NOT NULL;default:CURRENT_TIMESTAMP;"`
