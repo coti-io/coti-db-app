@@ -25,27 +25,27 @@ type TransactionResponse struct {
 }
 
 type BaseTransactionsRes struct {
-	TransactionHash                    *string                       `json:"transactionHash"`
-	AddressHash                        string                        `json:"addressHash"`
-	Amount                             decimal.Decimal               `json:"amount"`
-	OriginalAmount                     decimal.NullDecimal           `json:"originalAmount"`
-	Hash                               string                        `json:"hash"`
-	Name                               string                        `json:"name"`
-	CreateTime                         decimal.Decimal               `json:"createTime"`
-	ReducedAmount                      decimal.Decimal               `json:"reducedAmount"`
-	ReceiverDescription                *string                       `json:"receiverDescription"`
-	CurrencyHash                       *string                       `json:"currencyHash"`
-	OriginalCurrencyHash               *string                       `json:"originalCurrencyHash"`
-	SignerHash                         *string                       `json:"signerHash"`
-	TokenGenerationServiceResponseData TokenGenerationServiceDataRes `json:"tokenGenerationServiceResponseData"`
-	TokenMintingServiceResponseData    TokenMintingServiceDataRes    `json:"tokenMintingServiceResponseData"`
-	Event                              *string                       `json:"event"`
-	HardFork                           *bool                         `json:"hardFork"`
+	TransactionHash            *string                       `json:"transactionHash"`
+	AddressHash                string                        `json:"addressHash"`
+	Amount                     decimal.Decimal               `json:"amount"`
+	OriginalAmount             decimal.NullDecimal           `json:"originalAmount"`
+	Hash                       string                        `json:"hash"`
+	Name                       string                        `json:"name"`
+	CreateTime                 decimal.Decimal               `json:"createTime"`
+	ReducedAmount              decimal.Decimal               `json:"reducedAmount"`
+	ReceiverDescription        *string                       `json:"receiverDescription"`
+	CurrencyHash               *string                       `json:"currencyHash"`
+	OriginalCurrencyHash       *string                       `json:"originalCurrencyHash"`
+	SignerHash                 *string                       `json:"signerHash"`
+	TokenGenerationServiceData TokenGenerationServiceDataRes `json:"tokenGenerationServiceData"`
+	TokenMintingServiceData    TokenMintingServiceDataRes    `json:"tokenMintingServiceData"`
+	Event                      *string                       `json:"event"`
+	HardFork                   *bool                         `json:"hardFork"`
 }
 
 type TokenGenerationServiceDataRes struct {
-	OriginatorCurrencyData OriginatorCurrencyDataRes `json:"originatorCurrencyResponseData"`
-	CurrencyTypeData       CurrencyTypeDataRes       `json:"currencyTypeResponseData"`
+	OriginatorCurrencyData OriginatorCurrencyDataRes `json:"originatorCurrencyData"`
+	CurrencyTypeData       CurrencyTypeDataRes       `json:"currencyTypeData"`
 	FeeAmount              decimal.Decimal           `json:"feeAmount"`
 }
 type TokenMintingServiceDataRes struct {

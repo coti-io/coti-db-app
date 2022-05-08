@@ -1244,11 +1244,11 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			case "TGBT":
 				tgbt := entities.NewTokenGenerationFeeBaseTransaction(&baseTransaction, txId)
 				tgbtsToBeSaved = append(tgbtsToBeSaved, tgbt)
-				tgbtServiceDataBuilders = append(tgbtServiceDataBuilders, &TokenGenerationServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenGenerationServiceResponseData, DbBaseTx: tgbt})
+				tgbtServiceDataBuilders = append(tgbtServiceDataBuilders, &TokenGenerationServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenGenerationServiceData, DbBaseTx: tgbt})
 			case "TMBT":
 				tmbt := entities.NewTokenMintingFeeBaseTransaction(&baseTransaction, txId)
 				tmbtsToBeSaved = append(tmbtsToBeSaved, tmbt)
-				tmbtServiceDataBuilders = append(tmbtServiceDataBuilders, &TokenMintingServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenMintingServiceResponseData, DbBaseTx: tmbt, DbTx: value.DbTx})
+				tmbtServiceDataBuilders = append(tmbtServiceDataBuilders, &TokenMintingServiceDataBuilder{ServiceDataRes: &baseTransaction.TokenMintingServiceData, DbBaseTx: tmbt, DbTx: value.DbTx})
 			case "EIBT":
 				eibt := entities.NewEventInputBaseTransaction(&baseTransaction, txId)
 				eibtsToBeSaved = append(eibtsToBeSaved, eibt)
