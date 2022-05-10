@@ -42,8 +42,12 @@ func main() {
 	// register routes
 	server.GET("/get-sync-state", controllers.GetSyncState)
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
 	// runs the server
-	serverRunError := server.Run(":3000")
+	serverRunError := server.Run(":" + port)
 	if serverRunError != nil {
 		log.Fatal("Server run error")
 		return
