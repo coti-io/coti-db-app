@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/hex"
 	"github.com/ebfe/keccak"
+	"strings"
 	"sync"
 )
 
@@ -31,7 +32,7 @@ func NewCurrencyService() CurrencyService {
 
 func (service *currencyService) getCurrencyHashBySymbol(symbol string) (error error, currencyHash string) {
 	digest := keccak.New224()
-	_, err := digest.Write([]byte(symbol))
+	_, err := digest.Write([]byte(strings.ToLower(symbol)))
 	if err != nil {
 		return err, ""
 	}
