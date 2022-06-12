@@ -89,7 +89,13 @@ func verifyAppStates() {
 }
 
 func verifyNativeCurrencyHash() {
-	nativeCurrencyHash := "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01"
+	nativeSymbol := os.Getenv("NATIVE_SYMBOL")
+	if nativeSymbol == "" {
+		panic("NATIVE_SYMBOL is mandatory env variable")
+	}
+	var currencyService = service.NewCurrencyService()
+	// if not throw error
+	nativeCurrencyHash := currencyService.GetNativeCurrencyHash()
 	nativeCurrency := entities.Currency{Hash: nativeCurrencyHash}
 	nativeCurrencyError := dbprovider.DB.Where("hash = ?", nativeCurrencyHash).FirstOrCreate(&nativeCurrency).Error
 	if nativeCurrencyError != nil {
@@ -104,9 +110,9 @@ func loadClusterStamp() {
 	if err != nil {
 		panic(err)
 	}
-
 	if appStateIsClusterStampInitialized.Value != "true" {
-		nativeCurrencyHash := "e72d2137d5cfcc672ab743bddbdedb4e059ca9d3db3219f4eb623b01"
+		currencyService := service.NewCurrencyService()
+		nativeCurrencyHash := currencyService.GetNativeCurrencyHash()
 		nativeCurrency := entities.Currency{}
 		nativeCurrencyError := dbprovider.DB.Where("hash = ?", nativeCurrencyHash).First(&nativeCurrency).Error
 		if nativeCurrencyError != nil {

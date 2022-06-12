@@ -347,7 +347,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		var addressBalanceDiffMap = make(map[string]decimal.Decimal)
 		for _, baseTransaction := range tgbts {
 			// calculate hash and add a currency
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -366,7 +366,7 @@ func (service *transactionService) updateBalancesIteration() error {
 				return err
 			}
 
-			err, newCurrencyHash := currencyServiceInstance.getCurrencyHashBySymbol(originatorCurrencyData.Symbol)
+			err, newCurrencyHash := currencyServiceInstance.GetCurrencyHashBySymbol(originatorCurrencyData.Symbol)
 			if err != nil {
 				return err
 			}
@@ -381,42 +381,42 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 
 		for _, baseTransaction := range ffbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
 		for _, baseTransaction := range nfbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
 		for _, baseTransaction := range rbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
 		for _, baseTransaction := range ibts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
 		for _, baseTransaction := range eibts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
 		}
 		for _, baseTransaction := range tmbts {
-			currencyHash := currencyServiceInstance.normalizeCurrencyHash(baseTransaction.CurrencyHash)
+			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
