@@ -302,7 +302,7 @@ func (service *transactionService) updateBalancesIteration() error {
 			return nil
 		}
 		txIdToAttachmentTime := make(map[int32]decimal.Decimal)
-		for _,tx := range txs {
+		for _, tx := range txs {
 			txIdToAttachmentTime[tx.ID] = tx.AttachmentTime
 		}
 		var transactionIds []int32
@@ -353,7 +353,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 
 		serviceDataIdToTxId := make(map[int32]int32)
-		for _,tmbtTx := range tmbts {
+		for _, tmbtTx := range tmbts {
 			for _, serviceDataTx := range tmbtServiceData {
 				if tmbtTx.ID == serviceDataTx.BaseTransactionId {
 					serviceDataIdToTxId[serviceDataTx.ID] = tmbtTx.TransactionId
@@ -394,7 +394,7 @@ func (service *transactionService) updateBalancesIteration() error {
 			if err != nil {
 				return err
 			}
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId],newCurrencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], newCurrencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			currency := entities.Currency{OriginatorCurrencyDataId: originatorCurrencyData.ID, Hash: newCurrencyHash}
 			currencies = append(currencies, currency)
 		}
@@ -407,7 +407,7 @@ func (service *transactionService) updateBalancesIteration() error {
 
 		for _, baseTransaction := range ffbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -415,7 +415,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range nfbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -423,7 +423,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range rbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -431,7 +431,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range ibts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -439,7 +439,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range eibts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -447,7 +447,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range tmbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
-			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -455,7 +455,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, serviceData := range tmbtServiceData {
 			transactionsID := serviceDataIdToTxId[serviceData.ID]
-			appendTransactionCurrency(transactionsID, txIdToAttachmentTime[transactionsID], serviceData.MintingCurrencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
+			appendTransactionCurrency(transactionsID, txIdToAttachmentTime[transactionsID], serviceData.MintingCurrencyHash, helperMapTransactionCurrencies, &txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, serviceData.MintingCurrencyHash)
 			btTokenBalance := newTokenBalance(serviceData.MintingCurrencyHash, serviceData.ReceiverAddress)
 			key := btTokenBalance.toString()
@@ -478,6 +478,9 @@ func (service *transactionService) updateBalancesIteration() error {
 			for _, currency := range currencies {
 				currencyHashToIdMap[currency.Hash] = currency.ID
 			}
+			for _, txCurrency := range txCurrencyBuilders {
+				transactionCurrenciesToBeSaved = append(transactionCurrenciesToBeSaved, entities.NewTransactionCurrency(currencyHashToIdMap[txCurrency.currencyHash], txCurrency.attachmentTime, txCurrency.txId))
+			}
 			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&transactionCurrenciesToBeSaved).Error; err != nil {
 				log.Println(err)
 				return err
@@ -494,10 +497,10 @@ func (service *transactionService) updateBalancesIteration() error {
 	return err
 }
 
-func appendTransactionCurrency(txId int32, attachmentTime decimal.Decimal, currencyHash string, helperMapTransactionCurrencies map[string]bool, txCurrencyBuilders []*TransactionCurrencyBuilder, helperMapCurrencies map[string]bool)  {
+func appendTransactionCurrency(txId int32, attachmentTime decimal.Decimal, currencyHash string, helperMapTransactionCurrencies map[string]bool, txCurrencyBuilders *[]*TransactionCurrencyBuilder, helperMapCurrencies map[string]bool) {
 	uniqueIdCurrencyString := fmt.Sprintf("%d_%s", txId, currencyHash)
 	if !helperMapTransactionCurrencies[uniqueIdCurrencyString] {
-		txCurrencyBuilders = append(txCurrencyBuilders, &TransactionCurrencyBuilder{txId, currencyHash, attachmentTime})
+		*txCurrencyBuilders = append(*txCurrencyBuilders, &TransactionCurrencyBuilder{txId, currencyHash, attachmentTime})
 		helperMapTransactionCurrencies[uniqueIdCurrencyString] = true
 		helperMapCurrencies[currencyHash] = true
 	}
