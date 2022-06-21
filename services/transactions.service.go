@@ -87,6 +87,12 @@ type TransactionAddressBuilder struct {
 	attachmentTime decimal.Decimal
 }
 
+type TransactionCurrencyBuilder struct {
+	txId           int32
+	currencyHash   string
+	attachmentTime decimal.Decimal
+}
+
 var instance *transactionService
 
 // NewTransactionService we made this one a singleton because it has a state
@@ -280,8 +286,13 @@ func (service *transactionService) updateBalancesIteration() error {
 		var eibts []entities.EventInputBaseTransaction
 		var tmbtServiceData []entities.TokenMintingServiceData
 		var currencies []entities.Currency
+		var transactionCurrenciesToBeSaved []*entities.TransactionCurrency
+		var txCurrencyBuilders []*TransactionCurrencyBuilder
 		// get all transaction with consensus and not processed
 		// get all indexed transaction or with status attached to dag from db
+
+		helperMapTransactionCurrencies := make(map[string]bool)
+		helperMapCurrencies := make(map[string]bool)
 		err = dbTransaction.Where("`isProcessed` = 0 AND transactionConsensusUpdateTime IS NOT NULL AND type <> 'ZeroSpend'").Limit(3000).Find(&txs).Error
 		if err != nil {
 			return err
@@ -290,7 +301,10 @@ func (service *transactionService) updateBalancesIteration() error {
 			fmt.Println("[updateBalancesIteration][no transactions to update balance was found]")
 			return nil
 		}
-
+		txIdToAttachmentTime := make(map[int32]decimal.Decimal)
+		for _,tx := range txs {
+			txIdToAttachmentTime[tx.ID] = tx.AttachmentTime
+		}
 		var transactionIds []int32
 		for i, v := range txs {
 			txs[i].IsProcessed = true
@@ -328,6 +342,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		if err != nil {
 			return err
 		}
+
 		var tmbtIds []int32
 		for _, v := range tmbts {
 			tmbtIds = append(tmbtIds, v.ID)
@@ -335,6 +350,15 @@ func (service *transactionService) updateBalancesIteration() error {
 		err = dbTransaction.Where(map[string]interface{}{"baseTransactionId": tmbtIds}).Find(&tmbtServiceData).Error
 		if err != nil {
 			return err
+		}
+
+		serviceDataIdToTxId := make(map[int32]int32)
+		for _,tmbtTx := range tmbts {
+			for _, serviceDataTx := range tmbtServiceData {
+				if tmbtTx.ID == serviceDataTx.BaseTransactionId {
+					serviceDataIdToTxId[serviceDataTx.ID] = tmbtTx.TransactionId
+				}
+			}
 		}
 
 		uniqueHelperMap := make(map[string]bool)
@@ -370,6 +394,7 @@ func (service *transactionService) updateBalancesIteration() error {
 			if err != nil {
 				return err
 			}
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId],newCurrencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			currency := entities.Currency{OriginatorCurrencyDataId: originatorCurrencyData.ID, Hash: newCurrencyHash}
 			currencies = append(currencies, currency)
 		}
@@ -382,6 +407,7 @@ func (service *transactionService) updateBalancesIteration() error {
 
 		for _, baseTransaction := range ffbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -389,6 +415,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range nfbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -396,6 +423,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range rbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -403,6 +431,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range ibts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -410,6 +439,7 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range eibts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
@@ -417,18 +447,41 @@ func (service *transactionService) updateBalancesIteration() error {
 		}
 		for _, baseTransaction := range tmbts {
 			currencyHash := currencyServiceInstance.NormalizeCurrencyHash(baseTransaction.CurrencyHash)
+			appendTransactionCurrency(baseTransaction.TransactionId, txIdToAttachmentTime[baseTransaction.TransactionId], currencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, currencyHash)
 			btTokenBalance := newTokenBalance(currencyHash, baseTransaction.AddressHash)
 			key := btTokenBalance.toString()
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(baseTransaction.Amount)
-
 		}
 		for _, serviceData := range tmbtServiceData {
+			transactionsID := serviceDataIdToTxId[serviceData.ID]
+			appendTransactionCurrency(transactionsID, txIdToAttachmentTime[transactionsID], serviceData.MintingCurrencyHash, helperMapTransactionCurrencies, txCurrencyBuilders, helperMapCurrencies)
 			addItemToUniqueArray(uniqueHelperMap, &currencyHashUniqueArray, serviceData.MintingCurrencyHash)
 			btTokenBalance := newTokenBalance(serviceData.MintingCurrencyHash, serviceData.ReceiverAddress)
 			key := btTokenBalance.toString()
 			fmt.Println(serviceData.MintingAmount.String())
 			addressBalanceDiffMap[key] = addressBalanceDiffMap[key].Add(serviceData.MintingAmount)
+		}
+
+		if len(txCurrencyBuilders) > 0 {
+			var currencies []entities.Currency
+			var hashArray []string
+			currencyHashToIdMap := make(map[string]int32)
+			for hash, _ := range helperMapCurrencies {
+				hashArray = append(hashArray, hash)
+			}
+
+			err = dbTransaction.Where(map[string]interface{}{"hash": hashArray}).Find(&currencies).Error
+			if err != nil {
+				return err
+			}
+			for _, currency := range currencies {
+				currencyHashToIdMap[currency.Hash] = currency.ID
+			}
+			if err := dbTransaction.Omit("CreateTime", "UpdateTime").Create(&transactionCurrenciesToBeSaved).Error; err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 
 		err = updateBalances(dbTransaction, currencyHashUniqueArray, addressBalanceDiffMap)
@@ -439,6 +492,15 @@ func (service *transactionService) updateBalancesIteration() error {
 		return nil
 	})
 	return err
+}
+
+func appendTransactionCurrency(txId int32, attachmentTime decimal.Decimal, currencyHash string, helperMapTransactionCurrencies map[string]bool, txCurrencyBuilders []*TransactionCurrencyBuilder, helperMapCurrencies map[string]bool)  {
+	uniqueIdCurrencyString := fmt.Sprintf("%d_%s", txId, currencyHash)
+	if !helperMapTransactionCurrencies[uniqueIdCurrencyString] {
+		txCurrencyBuilders = append(txCurrencyBuilders, &TransactionCurrencyBuilder{txId, currencyHash, attachmentTime})
+		helperMapTransactionCurrencies[uniqueIdCurrencyString] = true
+		helperMapCurrencies[currencyHash] = true
+	}
 }
 
 func updateBalances(dbTransaction *gorm.DB, currencyHashUniqueArray []string, addressBalanceDiffMap map[string]decimal.Decimal) (err error) {
@@ -599,6 +661,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 		// get all indexed transaction or with status attached to dag from db
 		var txs []entities.Transaction
 		var txsAddresses []entities.TransactionAddress
+		var txsCurrencies []entities.TransactionCurrency
 		var ffbts []entities.FullnodeFeeBaseTransaction
 		var nfbts []entities.NetworkFeeBaseTransaction
 		var rbts []entities.ReceiverBaseTransaction
@@ -744,6 +807,7 @@ func (service *transactionService) cleanUnindexedTransactionIteration() error {
 		}
 		err = dbTransaction.Where(map[string]interface{}{"id": transactionIds}).Delete(&txs).Error
 		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&txsAddresses).Error
+		err = dbTransaction.Where(map[string]interface{}{"transactionId": transactionIds}).Delete(&txsCurrencies).Error
 
 		if err != nil {
 			return err
@@ -1207,7 +1271,6 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 	var tgbtServiceDataBuilders []*TokenGenerationServiceDataBuilder
 	var tmbtServiceDataBuilders []*TokenMintingServiceDataBuilder
 	var txAddressBuilders []*TransactionAddressBuilder
-
 	// to operate addressTransactionCount
 	helperMapAddressTransactionCount := make(map[string]bool)
 	helperMapTransactionAddresses := make(map[string]bool)

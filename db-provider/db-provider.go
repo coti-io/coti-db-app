@@ -75,7 +75,7 @@ func migrateDb(dbName string, dbUser string, dbHost string, dbPort string, dbPas
 		&entities.InputBaseTransaction{}, &entities.NetworkFeeBaseTransaction{}, &entities.ReceiverBaseTransaction{}, &entities.AddressBalance{},
 		&entities.CurrencyTypeData{}, &entities.OriginatorCurrencyData{}, &entities.TokenGenerationFeeBaseTransaction{}, &entities.TokenMintingFeeBaseTransaction{},
 		&entities.TokenMintingServiceData{}, &entities.TokenGenerationServiceData{}, &entities.EventInputBaseTransaction{}, &entities.AddressTransactionCount{},
-		&entities.TransactionAddress{}, &entities.Address{},
+		&entities.TransactionAddress{}, &entities.Address{}, &entities.TransactionCurrency{},
 	)
 	sqlDB, err := db.DB()
 	if err != nil {
