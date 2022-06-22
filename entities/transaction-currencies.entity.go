@@ -22,7 +22,3 @@ func NewTransactionCurrency(currencyId int32, attachmentTime decimal.Decimal, tr
 
 	return instance
 }
-
-func (TransactionCurrency) TableName() string {
-	return "transaction_currencies"
-}

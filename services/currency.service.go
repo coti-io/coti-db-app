@@ -15,7 +15,6 @@ type CurrencyService interface {
 	NormalizeCurrencyHash(currencyHash *string) string
 	GetNativeCurrencyHash() string
 	GetCurrencyHashBySymbol(symbol string) (err error, currencyHash string)
-
 }
 type currencyService struct {
 	// exported Fields
@@ -35,8 +34,6 @@ func NewCurrencyService() CurrencyService {
 	return currencyServiceInstance
 }
 
-
-
 func (service *currencyService) NormalizeCurrencyHash(currencyHash *string) string {
 	if currencyHash == nil {
 		return service.nativeCurrencyHash
@@ -44,15 +41,15 @@ func (service *currencyService) NormalizeCurrencyHash(currencyHash *string) stri
 	return *currencyHash
 }
 
-func (service *currencyService)  GetNativeCurrencyHash() string {
+func (service *currencyService) GetNativeCurrencyHash() string {
 	return service.nativeCurrencyHash
 }
 
-func (service *currencyService)  GetCurrencyHashBySymbol(symbol string) (error error, currencyHash string) {
+func (service *currencyService) GetCurrencyHashBySymbol(symbol string) (error error, currencyHash string) {
 	return getCurrencyHashBySymbol(symbol)
 }
 
-func  getCurrencyHashBySymbol(symbol string) (error error, currencyHash string) {
+func getCurrencyHashBySymbol(symbol string) (error error, currencyHash string) {
 	digest := keccak.New224()
 	_, err := digest.Write([]byte(strings.ToLower(symbol)))
 	if err != nil {

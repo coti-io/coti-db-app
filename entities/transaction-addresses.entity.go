@@ -22,7 +22,3 @@ func NewTransactionAddress(addressId int32, attachmentTime decimal.Decimal, tran
 
 	return instance
 }
-
-func (TransactionAddress) TableName() string {
-	return "transaction_addresses"
-}
