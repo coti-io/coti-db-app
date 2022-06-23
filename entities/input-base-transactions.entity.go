@@ -1,10 +1,9 @@
 package entities
 
 import (
+	"github.com/coti-io/coti-db-app/dto"
 	"github.com/shopspring/decimal"
 	"time"
-
-	"github.com/coti-io/coti-db-app/dto"
 )
 
 type InputBaseTransaction struct {

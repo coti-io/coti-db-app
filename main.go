@@ -129,7 +129,7 @@ func loadClusterStamp() {
 		reader := csv.NewReader(csvFile)
 
 		err = dbprovider.DB.Transaction(func(dbTransaction *gorm.DB) error {
-			addressBalances := []entities.AddressBalance{}
+			var addressBalances []entities.AddressBalance
 			recordsToSaveCounter := 0
 			for {
 				line, err := reader.Read()
