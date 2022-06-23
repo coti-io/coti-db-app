@@ -24,7 +24,7 @@ func (TokenMintingServiceData) TableName() string {
 	return "token_minting_service_data"
 }
 
-func NewTokenMintingFeeServiceData(sd *dto.TokenMintingServiceDataRes, baseTransactionId int32) *TokenMintingServiceData {
+func NewTokenMintingServiceData(sd *dto.TokenMintingServiceDataRes, baseTransactionId int32) *TokenMintingServiceData {
 	instance := new(TokenMintingServiceData)
 	instance.BaseTransactionId = baseTransactionId
 	instance.MintingCurrencyHash = sd.MintingCurrencyHash

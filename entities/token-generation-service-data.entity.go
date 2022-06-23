@@ -19,7 +19,7 @@ func (TokenGenerationServiceData) TableName() string {
 	return "token_generation_service_data"
 }
 
-func NewTokenGenerationFeeServiceData(sd *dto.TokenGenerationServiceDataRes, baseTransactionId int32) *TokenGenerationServiceData {
+func NewTokenGenerationServiceData(sd *dto.TokenGenerationServiceDataRes, baseTransactionId int32) *TokenGenerationServiceData {
 	instance := new(TokenGenerationServiceData)
 	instance.BaseTransactionId = baseTransactionId
 	instance.FeeAmount = sd.FeeAmount
