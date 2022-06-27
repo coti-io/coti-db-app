@@ -1040,7 +1040,7 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 					isChanged = true
 					txToSave.Index = tx.Index
 				}
-				if tx.TrustChainTrustScore != txToSave.TrustChainTrustScore {
+				if tx.TrustChainTrustScore != txToSave.TrustChainTrustScore && txToSave.TrustChainTrustScore.LessThan(tx.TrustChainTrustScore)   {
 					isChanged = true
 					txToSave.TrustChainTrustScore = tx.TrustChainTrustScore
 				}
