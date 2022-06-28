@@ -79,6 +79,7 @@ type TokenMintingServiceDataBuilder struct {
 type TokenGenerationCurrencyBuilder struct {
 	ServiceDataRes *dto.TokenGenerationServiceDataRes
 	DbServiceData  *entities.TokenGenerationServiceData
+	TxId           int32
 }
 
 type TransactionAddressBuilder struct {
@@ -1040,7 +1041,7 @@ func (service *transactionService) monitorTransactionIteration(fullnodeUrl strin
 					isChanged = true
 					txToSave.Index = tx.Index
 				}
-				if tx.TrustChainTrustScore != txToSave.TrustChainTrustScore && txToSave.TrustChainTrustScore.LessThan(tx.TrustChainTrustScore)   {
+				if tx.TrustChainTrustScore != txToSave.TrustChainTrustScore && txToSave.TrustChainTrustScore.LessThan(tx.TrustChainTrustScore) {
 					isChanged = true
 					txToSave.TrustChainTrustScore = tx.TrustChainTrustScore
 				}
@@ -1226,6 +1227,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 	helperMapTransactionAddresses := make(map[string]bool)
 	helperMapAddresses := make(map[string]bool)
 	mapAddressTransactionCount := make(map[string]int32)
+	mapTgbtServiceDataIdToTxId := make(map[int32]int32)
 
 	txIdToAttachmentTime := make(map[int32]decimal.Decimal)
 	for _, tx := range txHashToTxBuilderMap {
@@ -1322,7 +1324,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 		for _, tgbtServiceDataBuilder := range tgbtServiceDataBuilders {
 			dbServiceData := entities.NewTokenGenerationServiceData(tgbtServiceDataBuilder.ServiceDataRes, tgbtServiceDataBuilder.DbBaseTx.ID)
 			tgbtServiceDataToBeSaved = append(tgbtServiceDataToBeSaved, dbServiceData)
-			tgCurrencyBuilders = append(tgCurrencyBuilders, &TokenGenerationCurrencyBuilder{ServiceDataRes: tgbtServiceDataBuilder.ServiceDataRes, DbServiceData: dbServiceData})
+			tgCurrencyBuilders = append(tgCurrencyBuilders, &TokenGenerationCurrencyBuilder{ServiceDataRes: tgbtServiceDataBuilder.ServiceDataRes, DbServiceData: dbServiceData, TxId: tgbtServiceDataBuilder.DbBaseTx.TransactionId})
 		}
 		if err := db.Omit("CreateTime", "UpdateTime").Create(&tgbtServiceDataToBeSaved).Error; err != nil {
 			log.Println(err)
@@ -1332,6 +1334,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 			var originatorCurrencyDataToBeSaved []*entities.OriginatorCurrencyData
 			var currencyTypeDataToBeSaved []*entities.CurrencyTypeData
 			for _, currencyBuilder := range tgCurrencyBuilders {
+				mapTgbtServiceDataIdToTxId[currencyBuilder.DbServiceData.ID] = currencyBuilder.TxId
 				currencyTypeDataToBeSaved = append(currencyTypeDataToBeSaved, entities.NewCurrencyTypeData(&currencyBuilder.ServiceDataRes.CurrencyTypeData, currencyBuilder.DbServiceData.ID))
 				originatorCurrencyDataToBeSaved = append(originatorCurrencyDataToBeSaved, entities.NewOriginatorCurrencyData(&currencyBuilder.ServiceDataRes.OriginatorCurrencyData, currencyBuilder.DbServiceData.ID))
 			}
@@ -1349,7 +1352,7 @@ func (service *transactionService) insertBaseTransactionsInputsOutputs(txHashToT
 				}
 				for _, oct := range originatorCurrencyDataToBeSaved {
 					_, newCurrencyHash := currencyServiceInstance.GetCurrencyHashBySymbol(oct.Symbol)
-					currency := entities.Currency{OriginatorCurrencyDataId: oct.ID, Hash: newCurrencyHash}
+					currency := entities.Currency{OriginatorCurrencyDataId: oct.ID, Hash: newCurrencyHash, TransactionId: mapTgbtServiceDataIdToTxId[oct.ServiceDataId]}
 					currencies = append(currencies, &currency)
 				}
 			}
