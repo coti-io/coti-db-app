@@ -2,7 +2,11 @@
 
 name: Coti Db App Publisher
 
-on: [ workflow_dispatch ]
+on:
+  workflow_dispatch:
+    branches:
+      - dev
+      - master
 
 env:
   REGISTRY: ghcr.io
