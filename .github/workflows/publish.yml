@@ -1,0 +1,42 @@
+# Build the docker image and push it to GitHub Packages
+
+name: Coti Db App Publisher
+
+on: [ workflow_dispatch ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: coti-io/coti-db-app
+
+jobs:
+  build:
+    name: Build and push coti-db-app image
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+            type=raw,value=latest-{{branch}}
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push coti-db-app to GitHub Packages
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
