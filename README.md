@@ -6,6 +6,7 @@ COTI DB-App
 [![GitHub Stars](https://img.shields.io/github/stars/coti-io/coti-db-app.svg)](https://github.com/coti-io/coti-db-app/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/coti-io/coti-db-app.svg)](https://github.com/coti-io/coti-db-app/issues)
 [![Current Version](https://img.shields.io/badge/version-0.1.0--beta.0-yellow.svg)](https://github.com/coti-io/coti-db-app/)
+[![Docker Publish](https://github.com/coti-io/coti-db-app/actions/workflows/publish.yml/badge.svg)](https://github.com/coti-io/coti-db-app/actions/workflows/publish.yml)
 [![Discord Server](https://img.shields.io/discord/386571547508473876.svg)](https://discord.me/coti)
 
 ---
