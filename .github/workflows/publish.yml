@@ -1,6 +1,6 @@
 # Build the docker image and push it to GitHub Packages
 
-name: Coti Db App Publisher
+name: db app publisher
 
 on:
   workflow_dispatch:
